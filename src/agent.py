@@ -31,10 +31,32 @@ load_dotenv(".env.local")
 class Assistant(Agent):
     def __init__(self, mcp_client=None, room_manager=None) -> None:
         self.mcp_client = mcp_client or get_mcp_client()
-        self.room_manager = room_manager or get_room_manager()
+        # Lazy initialization: room_manager will be initialized when first needed
+        # This avoids "no running event loop" errors during synchronous initialization
+        self._room_manager = room_manager
         super().__init__(
             instructions=SYSTEM_PROMPT,
         )
+
+    @property
+    def room_manager(self):
+        """Lazy initialization of room manager"""
+        if self._room_manager is None:
+            try:
+                self._room_manager = get_room_manager()
+            except RuntimeError as e:
+                # If no event loop is running, defer initialization
+                if "no running event loop" in str(e):
+                    logger.debug("Deferring room_manager initialization until event loop is available")
+                    return None
+                raise
+        return self._room_manager
+
+    async def _get_room_manager(self):
+        """Get room manager with event loop guarantee (for async contexts)"""
+        if self._room_manager is None:
+            self._room_manager = get_room_manager()
+        return self._room_manager
 
     @function_tool
     async def get_cv_summary(self, _: RunContext) -> str:
@@ -180,7 +202,8 @@ class Assistant(Agent):
 
         Returns a message with the created room name."""
         try:
-            room_name = await self.room_manager.create_pattreeya_room(
+            rm = await self._get_room_manager()
+            room_name = await rm.create_pattreeya_room(
                 room_name_suffix=room_name_suffix
             )
             return f"Successfully created room: {room_name}. You can now connect to this room for a voice conversation with Pattreeya."
@@ -192,7 +215,8 @@ class Assistant(Agent):
     async def list_pattreeya_rooms(self, _: RunContext) -> str:
         """List all active pattreeya rooms currently available."""
         try:
-            rooms = await self.room_manager.list_pattreeya_rooms()
+            rm = await self._get_room_manager()
+            rooms = await rm.list_pattreeya_rooms()
             if rooms:
                 room_list = ", ".join(rooms)
                 return f"Currently active pattreeya rooms: {room_list}"
@@ -211,7 +235,8 @@ class Assistant(Agent):
 
         Returns a confirmation message."""
         try:
-            success = await self.room_manager.delete_pattreeya_room(room_name)
+            rm = await self._get_room_manager()
+            success = await rm.delete_pattreeya_room(room_name)
             if success:
                 return f"Successfully deleted room: {room_name}"
             else:
