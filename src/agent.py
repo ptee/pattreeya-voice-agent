@@ -290,13 +290,11 @@ async def my_agent(ctx: JobContext):
     # Logging setup with room and user context
     ctx.log_context_fields = {
         "room": ctx.room.name,
-        "participants": len(ctx.room.participants),
     }
 
     # Log session start
     logger.info(
-        f"🎤 Agent session started in room: {ctx.room.name} "
-        f"with {len(ctx.room.participants)} participant(s)"
+        f"🎤 Agent session started in room: {ctx.room.name}"
     )
 
     # Log STT configuration
