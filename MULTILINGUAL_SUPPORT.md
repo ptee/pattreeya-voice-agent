@@ -3,7 +3,7 @@
 ## Overview
 
 The Voice Agent now includes native multilingual support through:
-1. **Deepgram Nova-2** STT model with automatic language detection in "multi" mode
+1. **Deepgram Nova-3** STT model with automatic language detection
 2. **LiveKit MultilingualModel** for turn detection across different languages
 
 This enables the agent to seamlessly handle conversations in 99+ languages without pre-configuration.
@@ -12,17 +12,17 @@ This enables the agent to seamlessly handle conversations in 99+ languages witho
 
 ### 1. Automatic Language Detection (Speech-to-Text)
 
-**Model**: Deepgram Nova-2 with `language="multi"`
+**Model**: Deepgram Nova-3
 
 The STT component automatically detects the language of incoming audio:
 - **Supported**: 99+ languages including English, German, Thai, Spanish, French, Chinese, Japanese, etc.
-- **No Configuration Required**: Works out-of-the-box with "multi" language mode
-- **Accurate**: Industry-leading accuracy across different languages
+- **No Configuration Required**: Works out-of-the-box with automatic detection
+- **Accurate**: Industry-leading accuracy across different languages (Nova-3 latest model)
 - **Fast**: Real-time streaming transcription
 
 **Configuration**:
 ```python
-stt=inference.STT(model="deepgram/nova-2", language="multi")
+stt=inference.STT(model="deepgram/nova-3")
 ```
 
 **How it Works**:
@@ -54,7 +54,7 @@ preemptive_generation=True,
 
 ### Supported Languages
 
-Deepgram Nova-2 supports 99+ languages including:
+Deepgram Nova-3 supports 99+ languages including:
 
 **European Languages**:
 - English, German, French, Spanish, Italian, Dutch, Polish, Portuguese, Greek, Czech, Hungarian, Romanian, Swedish, Danish, Finnish, Norwegian, etc.
@@ -87,7 +87,7 @@ No language switching or configuration required - the agent adapts automatically
 ```
 User Audio (Any Language)
     ↓
-Deepgram Nova-2 STT (Auto Language Detection)
+Deepgram Nova-3 STT (Auto Language Detection)
     ↓ (Automatically detects language)
 Text Transcription (Detected Language)
     ↓
@@ -141,7 +141,8 @@ Current configuration in `src/agent.py` (line 247):
 ```python
 session = AgentSession(
     # Automatic language detection for 99+ languages
-    stt=inference.STT(model="deepgram/nova-2", language="multi"),
+    # Deepgram Nova-3 auto-detects language from audio without explicit mode
+    stt=inference.STT(model="deepgram/nova-3"),
 
     # Language-aware turn detection
     turn_detection=MultilingualModel(),
@@ -210,13 +211,13 @@ turn_detection=MultilingualModel()
 turn_detection=model.VAD()
 ```
 
-### 2. Set Language to "multi" Not Specific Language
+### 2. Don't Override Language Mode
 ```python
-# ✓ Correct (Auto-detect)
-stt=inference.STT(model="deepgram/nova-2", language="multi")
+# ✓ Correct (Auto-detect by default)
+stt=inference.STT(model="deepgram/nova-3")
 
-# ✗ Wrong (Forces English only)
-stt=inference.STT(model="deepgram/nova-2", language="en")
+# ✗ Wrong (Forces specific language only)
+stt=inference.STT(model="deepgram/nova-3", language="en")
 ```
 
 ### 3. Keep LLM Instructions Language-Agnostic
@@ -264,15 +265,15 @@ Test the agent with speakers of different languages to ensure:
 
 ## Alternative Models
 
-If you prefer Deepgram Nova-3 (newer model):
+If you prefer Deepgram Nova-2 (previous version):
 
 ```python
-stt=inference.STT(model="deepgram/nova-3", language="multi")
+stt=inference.STT(model="deepgram/nova-2")
 ```
 
 **Comparison**:
-- **Nova-3**: Latest, potentially higher accuracy, newer language support
-- **Nova-2**: Stable, proven accuracy, widely used
+- **Nova-3**: Latest model, higher accuracy, more recent language support (currently used)
+- **Nova-2**: Previous version, stable, proven accuracy, widely used
 
 ## Future Enhancements
 
@@ -291,8 +292,8 @@ Potential improvements:
 
 ## References
 
-- [Deepgram Nova-2 Documentation](https://developers.deepgram.com/documentation/speech-recognition/models/nova-2)
 - [Deepgram Nova-3 Documentation](https://developers.deepgram.com/documentation/speech-recognition/models/nova-3)
+- [Deepgram Nova-2 Documentation](https://developers.deepgram.com/documentation/speech-recognition/models/nova-2)
 - [LiveKit Agents STT Models](https://docs.livekit.io/agents/models/stt/)
 - [LiveKit Turn Detector](https://docs.livekit.io/agents/build/turns/)
 - [Supported Languages List](https://developers.deepgram.com/documentation/speech-recognition/supported-languages)
