@@ -21,6 +21,7 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from config import get_config
 from mcp_client import get_mcp_client
 from prompts import SYSTEM_PROMPT
+from room_manager import get_room_manager
 
 logger = logging.getLogger("agent")
 
@@ -28,8 +29,9 @@ load_dotenv(".env.local")
 
 
 class Assistant(Agent):
-    def __init__(self, mcp_client=None) -> None:
+    def __init__(self, mcp_client=None, room_manager=None) -> None:
         self.mcp_client = mcp_client or get_mcp_client()
+        self.room_manager = room_manager or get_room_manager()
         super().__init__(
             instructions=SYSTEM_PROMPT,
         )
@@ -167,6 +169,56 @@ class Assistant(Agent):
         except Exception as e:
             logger.error(f"Error in semantic_search: {e}")
             return f"Error: {str(e)}"
+
+    @function_tool
+    async def create_pattreeya_room(self, _: RunContext, room_name_suffix: Optional[str] = None) -> str:
+        """Create a new LiveKit room with 'pattreeya-' prefix for voice conversations.
+
+        Args:
+            room_name_suffix: Optional custom suffix for the room name.
+                            If not provided, a timestamp will be used (e.g., 'pattreeya-20250120-143025')
+
+        Returns a message with the created room name."""
+        try:
+            room_name = await self.room_manager.create_pattreeya_room(
+                room_name_suffix=room_name_suffix
+            )
+            return f"Successfully created room: {room_name}. You can now connect to this room for a voice conversation with Pattreeya."
+        except Exception as e:
+            logger.error(f"Error creating pattreeya room: {e}")
+            return f"Failed to create room: {str(e)}"
+
+    @function_tool
+    async def list_pattreeya_rooms(self, _: RunContext) -> str:
+        """List all active pattreeya rooms currently available."""
+        try:
+            rooms = await self.room_manager.list_pattreeya_rooms()
+            if rooms:
+                room_list = ", ".join(rooms)
+                return f"Currently active pattreeya rooms: {room_list}"
+            else:
+                return "No active pattreeya rooms at the moment."
+        except Exception as e:
+            logger.error(f"Error listing pattreeya rooms: {e}")
+            return f"Failed to list rooms: {str(e)}"
+
+    @function_tool
+    async def delete_pattreeya_room(self, _: RunContext, room_name: str) -> str:
+        """Delete a specific pattreeya room.
+
+        Args:
+            room_name: Name of the room to delete (should start with 'pattreeya-')
+
+        Returns a confirmation message."""
+        try:
+            success = await self.room_manager.delete_pattreeya_room(room_name)
+            if success:
+                return f"Successfully deleted room: {room_name}"
+            else:
+                return f"Failed to delete room: {room_name}"
+        except Exception as e:
+            logger.error(f"Error deleting pattreeya room: {e}")
+            return f"Failed to delete room: {str(e)}"
 
 
 server = AgentServer()
