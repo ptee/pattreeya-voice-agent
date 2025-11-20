@@ -554,17 +554,12 @@ class DatabaseTools:
         """
         try:
             query_embedding = self.embedding_model.embed_query(query)
+            collection_name = self.config.get_qdrant_collection()
 
-            search_params = {
-                "collection_name": self.config.get_qdrant_collection(),
-                "query_vector": query_embedding,
-                "limit": top_k
-            }
-
-            # Add section filter if provided
+            # Build filter if section is specified
+            query_filter = None
             if section and section != "all":
-                
-                search_params["query_filter"] = Filter(
+                query_filter = Filter(
                     must=[
                         FieldCondition(
                             key="section",
@@ -573,11 +568,28 @@ class DatabaseTools:
                     ]
                 )
 
-            # Try search_points first (newer API), fallback to search (older API)
+            # Use the correct Qdrant API
             try:
-                results = self.qdrant_client.search_points(**search_params)
-            except AttributeError:
-                results = self.qdrant_client.search(**search_params)
+                # Try search method (standard API)
+                results = self.qdrant_client.search(
+                    collection_name=collection_name,
+                    query_vector=query_embedding,
+                    limit=top_k,
+                    query_filter=query_filter
+                )
+            except (AttributeError, TypeError) as e:
+                # Fallback: try search_points if search doesn't work
+                logger.warning(f"search() failed: {e}, trying search_points()...")
+                try:
+                    results = self.qdrant_client.search_points(
+                        collection_name=collection_name,
+                        query_vector=query_embedding,
+                        limit=top_k,
+                        query_filter=query_filter
+                    )
+                except Exception as fallback_error:
+                    logger.error(f"Both search methods failed: {fallback_error}")
+                    raise
 
             formatted_results = []
             for result in results:
