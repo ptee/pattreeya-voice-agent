@@ -239,11 +239,12 @@ async def my_agent(ctx: JobContext):
         "room": ctx.room.name,
     }
 
-    # Set up a voice AI pipeline using OpenAI, Cartesia, AssemblyAI, and the LiveKit turn detector
+    # Set up a voice AI pipeline with multilingual support (Deepgram Nova-2, OpenAI, Cartesia, and LiveKit Multilingual Turn Detector)
     session = AgentSession(
         # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
+        # Deepgram Nova-2 with "multi" mode for automatic language detection (supports 99+ languages)
         # See all available models at https://docs.livekit.io/agents/models/stt/
-        stt=inference.STT(model="assemblyai/universal-streaming", language="en"),
+        stt=inference.STT(model="deepgram/nova-2", language="multi"),
         # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
         # See all available models at https://docs.livekit.io/agents/models/llm/
         llm=inference.LLM(model="openai/gpt-4.1-mini"),
@@ -253,6 +254,7 @@ async def my_agent(ctx: JobContext):
             model="cartesia/sonic-3", voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
         ),
         # VAD and turn detection are used to determine when the user is speaking and when the agent should respond
+        # MultilingualModel() automatically detects language for proper speaker detection across languages
         # See more at https://docs.livekit.io/agents/build/turns
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
