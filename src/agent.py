@@ -242,9 +242,9 @@ async def my_agent(ctx: JobContext):
     # Set up a voice AI pipeline with multilingual support (Deepgram Nova-3, OpenAI, Cartesia, and LiveKit Multilingual Turn Detector)
     session = AgentSession(
         # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
-        # Deepgram Nova-3 automatically detects language from audio (supports 99+ languages)
+        # Deepgram Nova-3 with language="multi" for automatic language detection (supports 99+ languages)
         # See all available models at https://docs.livekit.io/agents/models/stt/
-        stt=inference.STT(model="deepgram/nova-3"),
+        stt=inference.STT(model="deepgram/nova-3", language="multi"),
         # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
         # See all available models at https://docs.livekit.io/agents/models/llm/
         llm=inference.LLM(model="openai/gpt-4.1-mini"),

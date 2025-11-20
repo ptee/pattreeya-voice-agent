@@ -12,17 +12,17 @@ This enables the agent to seamlessly handle conversations in 99+ languages witho
 
 ### 1. Automatic Language Detection (Speech-to-Text)
 
-**Model**: Deepgram Nova-3
+**Model**: Deepgram Nova-3 with `language="multi"`
 
 The STT component automatically detects the language of incoming audio:
 - **Supported**: 99+ languages including English, German, Thai, Spanish, French, Chinese, Japanese, etc.
-- **No Configuration Required**: Works out-of-the-box with automatic detection
+- **No Pre-Configuration Required**: Works out-of-the-box with "multi" language mode
 - **Accurate**: Industry-leading accuracy across different languages (Nova-3 latest model)
 - **Fast**: Real-time streaming transcription
 
 **Configuration**:
 ```python
-stt=inference.STT(model="deepgram/nova-3")
+stt=inference.STT(model="deepgram/nova-3", language="multi")
 ```
 
 **How it Works**:
@@ -141,8 +141,8 @@ Current configuration in `src/agent.py` (line 247):
 ```python
 session = AgentSession(
     # Automatic language detection for 99+ languages
-    # Deepgram Nova-3 auto-detects language from audio without explicit mode
-    stt=inference.STT(model="deepgram/nova-3"),
+    # Deepgram Nova-3 with language="multi" for multilingual support
+    stt=inference.STT(model="deepgram/nova-3", language="multi"),
 
     # Language-aware turn detection
     turn_detection=MultilingualModel(),
@@ -211,10 +211,10 @@ turn_detection=MultilingualModel()
 turn_detection=model.VAD()
 ```
 
-### 2. Don't Override Language Mode
+### 2. Use `language="multi"` for Multilingual Support
 ```python
-# ✓ Correct (Auto-detect by default)
-stt=inference.STT(model="deepgram/nova-3")
+# ✓ Correct (Auto-detect across all languages)
+stt=inference.STT(model="deepgram/nova-3", language="multi")
 
 # ✗ Wrong (Forces specific language only)
 stt=inference.STT(model="deepgram/nova-3", language="en")
@@ -259,21 +259,22 @@ Test the agent with speakers of different languages to ensure:
 
 ### Issue: Language Misdetection
 **Solution**:
-- Check that language is set to "multi"
+- Verify `language="multi"` is set in STT configuration
 - Ensure sufficient audio for detection (>1 second)
 - Verify language is actually in the 99+ supported list
+- Check Deepgram logs for confidence scores
 
 ## Alternative Models
 
 If you prefer Deepgram Nova-2 (previous version):
 
 ```python
-stt=inference.STT(model="deepgram/nova-2")
+stt=inference.STT(model="deepgram/nova-2", language="multi")
 ```
 
 **Comparison**:
-- **Nova-3**: Latest model, higher accuracy, more recent language support (currently used)
-- **Nova-2**: Previous version, stable, proven accuracy, widely used
+- **Nova-3**: Latest model, higher accuracy, more recent language support (currently used with `language="multi"`)
+- **Nova-2**: Previous version, stable, proven accuracy, also supports `language="multi"`
 
 ## Future Enhancements
 
