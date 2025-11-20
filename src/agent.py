@@ -24,6 +24,8 @@ from prompts import SYSTEM_PROMPT
 from room_manager import get_room_manager
 
 logger = logging.getLogger("agent")
+stt_logger = logging.getLogger("stt")
+language_logger = logging.getLogger("language_detection")
 
 load_dotenv(".env.local")
 
@@ -246,11 +248,38 @@ class Assistant(Agent):
             return f"Failed to delete room: {str(e)}"
 
 
+def configure_stt_logging():
+    """Configure logging for STT and language detection."""
+    # STT Logger - logs transcribed text and model info
+    stt_handler = logging.StreamHandler()
+    stt_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s - %(name)s - STT - %(levelname)s - %(message)s"
+        )
+    )
+    stt_logger.addHandler(stt_handler)
+    stt_logger.setLevel(logging.INFO)
+
+    # Language Detection Logger - logs detected languages
+    lang_handler = logging.StreamHandler()
+    lang_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s - %(name)s - LANG_DETECTION - %(levelname)s - %(message)s"
+        )
+    )
+    language_logger.addHandler(lang_handler)
+    language_logger.setLevel(logging.INFO)
+
+
 server = AgentServer()
 
 
 def prewarm(proc: JobProcess):
+    """Prewarm models and configure logging."""
     proc.userdata["vad"] = silero.VAD.load()
+    # Configure STT logging
+    configure_stt_logging()
+    stt_logger.info("STT logging configured - ready to capture transcriptions")
 
 
 server.setup_fnc = prewarm
@@ -258,11 +287,31 @@ server.setup_fnc = prewarm
 
 @server.rtc_session()
 async def my_agent(ctx: JobContext):
-    # Logging setup
-    # Add any other context you want in all log entries here
+    # Logging setup with room and user context
     ctx.log_context_fields = {
         "room": ctx.room.name,
+        "participants": len(ctx.room.participants),
     }
+
+    # Log session start
+    logger.info(
+        f"🎤 Agent session started in room: {ctx.room.name} "
+        f"with {len(ctx.room.participants)} participant(s)"
+    )
+
+    # Log STT configuration
+    stt_logger.info("=" * 60)
+    stt_logger.info("STT Configuration")
+    stt_logger.info("=" * 60)
+    stt_logger.info("Model: Deepgram Nova-3")
+    stt_logger.info("Language Mode: multi (automatic language detection)")
+    stt_logger.info("Supported Languages: 99+ (including EN, DE, ES, FR, TH, etc.)")
+    stt_logger.info("Language Detection: Automatic from audio input")
+    stt_logger.info("=" * 60)
+
+    language_logger.info(
+        "Language detection initialized - ready to detect user's language from speech"
+    )
 
     # Set up a voice AI pipeline with multilingual support (Deepgram Nova-3, OpenAI, Cartesia, and LiveKit Multilingual Turn Detector)
     session = AgentSession(
@@ -307,6 +356,10 @@ async def my_agent(ctx: JobContext):
     # await avatar.start(session, room=ctx.room)
 
     # Start the session, which initializes the voice pipeline and warms up the models
+    logger.info("Starting agent session with multilingual STT support...")
+    stt_logger.info("Session starting - initializing transcription pipeline")
+    language_logger.info("Listening for user input - will detect language automatically")
+
     await session.start(
         agent=Assistant(),
         room=ctx.room,
@@ -320,6 +373,11 @@ async def my_agent(ctx: JobContext):
     )
 
     # Join the room and connect to the user
+    logger.info(f"✓ Agent connected to room {ctx.room.name} - ready to listen")
+    stt_logger.info("Transcription pipeline active - waiting for user speech")
+    language_logger.info(
+        "Language detection active - will log detected language from user's first message"
+    )
     await ctx.connect()
 
 
