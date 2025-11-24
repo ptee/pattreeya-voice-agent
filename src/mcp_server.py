@@ -568,28 +568,17 @@ class DatabaseTools:
                     ]
                 )
 
-            # Use the correct Qdrant API
-            try:
-                # Try search method (standard API)
-                results = self.qdrant_client.search(
-                    collection_name=collection_name,
-                    query_vector=query_embedding,
-                    limit=top_k,
-                    query_filter=query_filter
-                )
-            except (AttributeError, TypeError) as e:
-                # Fallback: try search_points if search doesn't work
-                logger.warning(f"search() failed: {e}, trying search_points()...")
-                try:
-                    results = self.qdrant_client.search_points(
-                        collection_name=collection_name,
-                        query_vector=query_embedding,
-                        limit=top_k,
-                        query_filter=query_filter
-                    )
-                except Exception as fallback_error:
-                    logger.error(f"Both search methods failed: {fallback_error}")
-                    raise
+            # Use the Qdrant query_points API (search is deprecated)
+            response = self.qdrant_client.query_points(
+                collection_name=collection_name,
+                query=query_embedding,
+                query_filter=query_filter,
+                limit=top_k,
+                with_payload=True
+            )
+
+            # query_points returns a QueryResponse, extract the points
+            results = response.points
 
             formatted_results = []
             for result in results:
