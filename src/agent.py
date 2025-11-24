@@ -22,6 +22,7 @@ from config import get_config
 from mcp_client import get_mcp_client
 from prompts import SYSTEM_PROMPT
 from room_manager import get_room_manager
+from web_server import run_web_server
 
 logger = logging.getLogger("agent")
 stt_logger = logging.getLogger("stt")
@@ -388,6 +389,48 @@ if __name__ == "__main__":
         logger.info("✓ Agent is ready to serve")
     except Exception as e:
         logger.error(f"✗ Failed to initialize Assistant: {e}")
+
+    # Start the Flask API server on port 8019
+    # This serves the /api/connection-details endpoint for the React frontend
+    try:
+        config = get_config()
+        api_thread = run_web_server(
+            host="0.0.0.0",
+            port=8019,
+            livekit_api_key=config.get_livekit_api_key(),
+            livekit_api_secret=config.get_livekit_api_secret(),
+            livekit_url=config.get_livekit_url(),
+            static_files_path=None,
+            debug=False,
+        )
+        logger.info("✓ API server started on http://0.0.0.0:8019")
+    except Exception as e:
+        logger.warning(f"API server initialization failed (agent will still run): {e}")
+
+    # Start the React frontend server on port 3000
+    # Run Next.js in production mode (from the web directory)
+    import subprocess
+    import time
+    from pathlib import Path
+
+    try:
+        web_dir = Path(__file__).parent.parent / "web"
+        if (web_dir / ".next").exists():
+            logger.info("Starting Next.js production server on port 3000...")
+            next_process = subprocess.Popen(
+                ["pnpm", "start"],
+                cwd=str(web_dir),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            time.sleep(3)  # Give Next.js time to start
+            logger.info("✓ Next.js server started on http://0.0.0.0:3000")
+        else:
+            logger.warning(
+                "Next.js build output not found. To build the frontend, run: cd web && pnpm build"
+            )
+    except Exception as e:
+        logger.warning(f"Failed to start Next.js server: {e}")
 
     # Run the LiveKit agent server
     cli.run_app(server)
