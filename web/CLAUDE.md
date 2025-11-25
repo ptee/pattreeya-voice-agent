@@ -366,15 +366,25 @@ Then run: `docker-compose up -d`
 - See `../vercel.json` if custom config needed
 
 #### Render.com
-- Uses `render.yaml` at project root for configuration
+- Uses `render.yaml` in the web/ directory for configuration
 - Automatically enables pnpm via corepack
 - Build command: `pnpm install && pnpm build`
 - Start command: `pnpm start`
-- Requires environment variables:
-  ```env
-  NEXT_PUBLIC_LIVEKIT_URL=wss://voiceagent-46wqrz65.livekit.cloud
-  NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=https://your-backend-url.com/api/connection-details
+- Requires environment variables in `render.yaml`:
+  ```yaml
+  envVars:
+    - key: NEXT_PUBLIC_LIVEKIT_URL
+      value: wss://voiceagent-46wqrz65.livekit.cloud
+    - key: NEXT_PUBLIC_CONN_DETAILS_ENDPOINT
+      value: https://your-backend-url.com/api/connection-details
   ```
+
+**Setup:**
+1. In Render.com dashboard, create a new "Web Service"
+2. Connect your GitHub repository
+3. Set the root directory to `web`
+4. Render will automatically detect `web/render.yaml` and use it for configuration
+5. Push to main branch to auto-deploy
 
 #### Docker
 - Use included `Dockerfile` and `docker-compose.yml` (see Docker Deployment section above)
