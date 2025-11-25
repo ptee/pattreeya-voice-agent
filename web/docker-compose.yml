@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      # LiveKit Configuration
+      NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-wss://voiceagent-46wqrz65.livekit.cloud}
+
+      # Backend API Endpoint (where token is generated)
+      NEXT_PUBLIC_CONN_DETAILS_ENDPOINT: ${NEXT_PUBLIC_CONN_DETAILS_ENDPOINT:-http://localhost:8019/api/connection-details}
+
+      # Optional: OpenAI API Key (if needed by frontend)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+    # Optional: Override command if needed
+    # command: node server.js --hostname 0.0.0.0
+
+  # Optional: Backend service (for local development with compose)
+  # Uncomment to run both frontend and backend together
+  # backend:
+  #   build:
+  #     context: ../
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8019:8019"
+  #   environment:
+  #     LIVEKIT_URL: ${LIVEKIT_URL:-wss://voiceagent-46wqrz65.livekit.cloud}
+  #     LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+  #     LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+  #   depends_on:
+  #     - frontend
+  #   restart: unless-stopped

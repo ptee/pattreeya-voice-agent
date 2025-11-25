@@ -288,10 +288,82 @@ The build:
 - Optimizes CSS and images
 - Generates static exports where applicable
 
+### Docker Deployment
+
+The frontend includes a production-ready Dockerfile with multi-stage build optimization.
+
+**Files:**
+- `Dockerfile`: Multi-stage build (builder + runtime)
+- `.dockerignore`: Excludes unnecessary files from build context
+- `docker-compose.yml`: Complete compose setup with environment configuration
+- `DOCKER.md`: Comprehensive Docker documentation
+
+**Quick Start:**
+
+```bash
+# Build image
+docker build -t ptee-voice-agent-frontend:latest .
+
+# Run with docker-compose (uses port 3001 by default)
+docker-compose up -d
+
+# Or run standalone on port 3001
+docker run -p 3001:3000 \
+  -e NEXT_PUBLIC_LIVEKIT_URL=wss://voiceagent-46wqrz65.livekit.cloud \
+  -e NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=http://localhost:8019/api/connection-details \
+  ptee-voice-agent-frontend:latest
+
+# Access at: http://localhost:3001
+```
+
+**Key Features:**
+- Multi-stage build reduces final image size (~150MB)
+- Alpine Linux base for minimal footprint
+- Health check configured for production monitoring
+- Environment variables for LiveKit and backend configuration
+- Supports local development and cloud deployment
+
+**Environment Variables for Docker:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_LIVEKIT_URL` | Yes | LiveKit WebSocket server URL |
+| `NEXT_PUBLIC_CONN_DETAILS_ENDPOINT` | No | Backend token endpoint (defaults to `/api/connection-details`) |
+| `OPENAI_API_KEY` | No | OpenAI API key (if needed by frontend) |
+
+**Docker Compose with Backend:**
+
+To run frontend and backend together, uncomment the `backend` service in `docker-compose.yml`:
+
+```yaml
+services:
+  frontend:
+    # Frontend configuration
+    environment:
+      NEXT_PUBLIC_CONN_DETAILS_ENDPOINT: http://backend:8019/api/connection-details
+
+  backend:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    # Backend will run on port 8019
+```
+
+Then run: `docker-compose up -d`
+
+**See `DOCKER.md` for:**
+- Detailed setup and troubleshooting
+- Network configuration (local, Docker, production)
+- Health check configuration
+- Performance optimization
+- Kubernetes integration
+
 ### Deployment Targets
 
 - **Vercel** (recommended): Automatic deploys on git push
-- **Docker**: Can containerize with `npm install && npm run build && npm start`
+- **Docker**: Use included `Dockerfile` and `docker-compose.yml` (see Docker Deployment section above)
+- **Docker Compose**: Multi-service setup with backend (`docker-compose.yml`)
+- **Kubernetes**: Container-ready with health checks configured
 - **LiveKit Cloud Sandbox**: Direct deployment via `lk app create --template agent-starter-react`
 
 ## Important File Locations
