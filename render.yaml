@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: ptee-voice-agent-frontend
+    runtime: node
+    plan: free
+
+    # Service root is the web directory
+    rootDir: web
+
+    # Build command - explicitly install pnpm first
+    buildCommand: corepack enable && corepack prepare pnpm@10.2.0 --activate && pnpm install --frozen-lockfile && pnpm build
+
+    # Start command
+    startCommand: pnpm start
+
+    # Environment variables
+    envVars:
+      - key: NEXT_PUBLIC_LIVEKIT_URL
+        value: wss://voiceagent-46wqrz65.livekit.cloud
+      - key: NEXT_PUBLIC_CONN_DETAILS_ENDPOINT
+        value: https://your-backend-url.com/api/connection-details  # Change to your backend
+      - key: NODE_VERSION
+        value: 22.16.0
+
+    # Auto-deploy on git push
+    autoDeploy: true

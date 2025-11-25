@@ -360,11 +360,37 @@ Then run: `docker-compose up -d`
 
 ### Deployment Targets
 
-- **Vercel** (recommended): Automatic deploys on git push
-- **Docker**: Use included `Dockerfile` and `docker-compose.yml` (see Docker Deployment section above)
-- **Docker Compose**: Multi-service setup with backend (`docker-compose.yml`)
-- **Kubernetes**: Container-ready with health checks configured
-- **LiveKit Cloud Sandbox**: Direct deployment via `lk app create --template agent-starter-react`
+#### Vercel (Recommended)
+- Automatic deploys on git push
+- Zero-configuration for Next.js
+- See `../vercel.json` if custom config needed
+
+#### Render.com
+- Uses `render.yaml` at project root for configuration
+- Automatically enables pnpm via corepack
+- Build command: `pnpm install && pnpm build`
+- Start command: `pnpm start`
+- Requires environment variables:
+  ```env
+  NEXT_PUBLIC_LIVEKIT_URL=wss://voiceagent-46wqrz65.livekit.cloud
+  NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=https://your-backend-url.com/api/connection-details
+  ```
+
+#### Docker
+- Use included `Dockerfile` and `docker-compose.yml` (see Docker Deployment section above)
+- Multi-stage build optimized for production
+- Run: `docker build -t ptee-voice-agent-frontend:latest web/`
+
+#### Docker Compose
+- Multi-service setup with backend (`docker-compose.yml`)
+- Run: `docker-compose up -d`
+
+#### Kubernetes
+- Container-ready with health checks configured
+- Use Docker image built from Dockerfile
+
+#### LiveKit Cloud Sandbox
+- Direct deployment via `lk app create --template agent-starter-react`
 
 ## Important File Locations
 
