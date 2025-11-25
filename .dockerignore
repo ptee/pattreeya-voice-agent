@@ -11,6 +11,20 @@ build/
 .venv/
 venv/
 
+# node modules
+node_modules/
+web/node_modules/
+__pycache__/
+*.pyc
+.git/
+.env
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
 # Caches and test output
 .cache/
 .pytest_cache/

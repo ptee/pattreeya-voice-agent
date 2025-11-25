@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 
 # Use the official UV Python base image with Python 3.13 on Debian Bookworm
 # UV is a fast Python package manager that provides better performance than pip
@@ -21,49 +20,39 @@ RUN adduser \
     --uid "${UID}" \
     appuser
 
-# Install build dependencies required for Python packages with native extensions
-# gcc: C compiler needed for building Python packages with C extensions
-# python3-dev: Python development headers needed for compilation
-# We clean up the apt cache after installation to keep the image size down
+# Install build dependencies + Node.js
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     python3-dev \
+    curl \
   && rm -rf /var/lib/apt/lists/*
 
-# Create a new directory for our application code
-# And set it as the working directory
-WORKDIR /app
+# Install Node.js and pnpm
+#RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+#  && apt-get install -y nodejs \
+#  && npm install -g pnpm
 
-# Copy just the dependency files first, for more efficient layer caching
-COPY pyproject.toml uv.lock ./
-RUN mkdir -p src
 
-# Install Python dependencies using UV's lock file
-# --locked ensures we use exact versions from uv.lock for reproducible builds
-# This creates a virtual environment and installs all dependencies
-# Ensure your uv.lock file is checked in for consistency across environments
-RUN uv sync --locked
+  WORKDIR /app
 
-# Copy all remaining application files into the container
-# This includes source code, configuration files, and dependency specifications
-# (Excludes files specified in .dockerignore)
+# Copy everything first
 COPY . .
 
-# Change ownership of all app files to the non-privileged user
-# This ensures the application can read/write files as needed
-RUN chown -R appuser:appuser /app
+# Build frontend
+#WORKDIR /app/web
+#RUN pnpm install
+#RUN pnpm build
 
-# Switch to the non-privileged user for all subsequent operations
-# This improves security by not running as root
+# Back to app root for Python setup
+WORKDIR /app
+
+# Install Python dependencies
+RUN uv sync --locked
+
+RUN chown -R appuser:appuser /app
 USER appuser
 
-# Pre-download any ML models or files the agent needs
-# This ensures the container is ready to run immediately without downloading
-# dependencies at runtime, which improves startup time and reliability
 RUN uv run src/agent.py download-files
 
-# Run the application using UV
-# UV will activate the virtual environment and run the agent.
-# The "start" command tells the worker to connect to LiveKit and begin waiting for jobs.
 CMD ["uv", "run", "src/agent.py", "start"]

@@ -11,5 +11,5 @@ subdomain = "voiceagent-46wqrz65"
 # Your agent's unique identifier in LiveKit Cloud
 # Get this from your LiveKit Cloud dashboard
 # You can also run: lk agent config
-id = "pattreeya-voice-assistant"
+id = "CA_Gjnxq5N2PeGb"
 name = "Pattreeya Voice Assistant"
