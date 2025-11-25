@@ -1,14 +1,14 @@
 """
 Configuration management for Voice Agent
-Loads environment variables from .env.local and provides centralized config access
+Loads environment variables from .env files and provides centralized config access
 """
 
 import os
 from typing import Optional
 from dotenv import load_dotenv
 
-# Load environment variables from .env.local
-load_dotenv(".env.local")
+# Load environment variables from .env files
+load_dotenv()
 
 
 class ConfigManager:

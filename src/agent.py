@@ -28,7 +28,7 @@ logger = logging.getLogger("agent")
 stt_logger = logging.getLogger("stt")
 language_logger = logging.getLogger("language_detection")
 
-load_dotenv(".env.local")
+load_dotenv()
 
 
 class Assistant(Agent):
