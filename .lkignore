@@ -1,0 +1,8 @@
+# .lkignore
+.next
+node_modules
+.git
+*.log
+.env*
+web/.next
+web/node_modules
