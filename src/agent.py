@@ -15,7 +15,7 @@ from livekit.agents import (
     function_tool,
     RunContext,
 )
-from livekit.plugins import noise_cancellation, silero
+from livekit.plugins import noise_cancellation, silero, elevenlabs, tavus
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from config import get_config
@@ -323,9 +323,13 @@ async def my_agent(ctx: JobContext):
         llm=inference.LLM(model="openai/gpt-4.1-mini"),
         # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
         # See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
+        # -pt- my default
         tts=inference.TTS(
             model="cartesia/sonic-3", voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
         ),
+        #tts=elevenlabs.TTS(model="eleven_flash_v2_5",
+        #    voice_id="ODq5zmih8GrVes37Dizd"
+        #)
         # VAD and turn detection are used to determine when the user is speaking and when the agent should respond
         # MultilingualModel() automatically detects language for proper speaker detection across languages
         # See more at https://docs.livekit.io/agents/build/turns
@@ -353,6 +357,20 @@ async def my_agent(ctx: JobContext):
     # )
     # # Start the avatar and wait for it to join
     # await avatar.start(session, room=ctx.room)
+
+    avatar = tavus.AvatarSession(
+        replica_id="r9d30b0e55ac",  # ID of the Tavus replica to use
+        persona_id="p9cb09c3c7bc",  # ID of the Tavus persona to use (see preceding section for configuration details)
+    )
+
+    # Start the avatar and wait for it to join
+    await avatar.start(session, room=ctx.room)
+
+    # Start your agent session with the user
+    await session.start(
+        room=ctx.room,
+        agent=Assistant()
+    )
 
     # Start the session, which initializes the voice pipeline and warms up the models
     logger.info("Starting agent session with multilingual STT support...")

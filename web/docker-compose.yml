@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: voice-agent-frontend:latest
     ports:
       - "3001:3000"
     environment:
@@ -12,7 +13,7 @@ services:
       NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-wss://voiceagent-46wqrz65.livekit.cloud}
 
       # Backend API Endpoint (where token is generated)
-      NEXT_PUBLIC_CONN_DETAILS_ENDPOINT: ${NEXT_PUBLIC_CONN_DETAILS_ENDPOINT:-http://localhost:8019/api/connection-details}
+      NEXT_PUBLIC_CONN_DETAILS_ENDPOINT: ${NEXT_PUBLIC_CONN_DETAILS_ENDPOINT:-http://voiceagent-46wqrz65.livekit.cloud/api/connection-details}
 
       # Optional: OpenAI API Key (if needed by frontend)
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
