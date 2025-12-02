@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **React + Next.js** starter template for building real-time voice agent interfaces using [LiveKit Agents](https://docs.livekit.io/agents). It provides a web-based UI for voice interaction with AI agents, featuring camera streaming, screen sharing, and avatar integration.
 
 The project uses:
+
 - **Framework**: Next.js 15 (App Router) with TypeScript
 - **UI Components**: LiveKit React Components, Radix UI primitives
 - **Styling**: Tailwind CSS v4 with PostCSS
@@ -80,20 +81,20 @@ Centralized configuration interface for branding and feature toggles:
 
 ```typescript
 export interface AppConfig {
-  pageTitle: string;              // HTML page title
-  pageDescription: string;        // Meta description
-  companyName: string;            // Branding text
-  supportsChatInput: boolean;      // Enable text input feature
-  supportsVideoInput: boolean;     // Enable camera feature
-  supportsScreenShare: boolean;    // Enable screen sharing
+  pageTitle: string; // HTML page title
+  pageDescription: string; // Meta description
+  companyName: string; // Branding text
+  supportsChatInput: boolean; // Enable text input feature
+  supportsVideoInput: boolean; // Enable camera feature
+  supportsScreenShare: boolean; // Enable screen sharing
   isPreConnectBufferEnabled: boolean; // Show preconnect animations
-  logo: string;                   // Light theme logo path
-  logoDark?: string;              // Dark theme logo path
-  accent: string;                 // Primary color (light)
-  accentDark?: string;            // Primary color (dark)
-  startButtonText: string;        // CTA button label
-  sandboxId?: string;             // LiveKit Cloud Sandbox ID
-  agentName?: string;             // Agent identifier
+  logo: string; // Light theme logo path
+  logoDark?: string; // Dark theme logo path
+  accent: string; // Primary color (light)
+  accentDark?: string; // Primary color (dark)
+  startButtonText: string; // CTA button label
+  sandboxId?: string; // LiveKit Cloud Sandbox ID
+  agentName?: string; // Agent identifier
 }
 ```
 
@@ -118,6 +119,7 @@ const { isConnectionActive, connect, startDisconnectTransition } = useConnection
 Server-side endpoint generating secure JWT tokens:
 
 **Request Body**:
+
 ```json
 {
   "room_config": {
@@ -127,6 +129,7 @@ Server-side endpoint generating secure JWT tokens:
 ```
 
 **Response**:
+
 ```json
 {
   "serverUrl": "wss://livekit.example.com",
@@ -137,6 +140,7 @@ Server-side endpoint generating secure JWT tokens:
 ```
 
 **Key Details**:
+
 - Token TTL set to 15 minutes
 - Grants: publish, subscribe, publish data
 - Room/participant names auto-generated with random suffixes
@@ -283,6 +287,7 @@ pnpm start
 ```
 
 The build:
+
 - Compiles TypeScript → JavaScript
 - Bundles dependencies
 - Optimizes CSS and images
@@ -293,6 +298,7 @@ The build:
 The frontend includes a production-ready Dockerfile with multi-stage build optimization.
 
 **Files:**
+
 - `Dockerfile`: Multi-stage build (builder + runtime)
 - `.dockerignore`: Excludes unnecessary files from build context
 - `docker-compose.yml`: Complete compose setup with environment configuration
@@ -317,6 +323,7 @@ docker run -p 3001:3000 \
 ```
 
 **Key Features:**
+
 - Multi-stage build reduces final image size (~150MB)
 - Alpine Linux base for minimal footprint
 - Health check configured for production monitoring
@@ -325,11 +332,11 @@ docker run -p 3001:3000 \
 
 **Environment Variables for Docker:**
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_LIVEKIT_URL` | Yes | LiveKit WebSocket server URL |
-| `NEXT_PUBLIC_CONN_DETAILS_ENDPOINT` | No | Backend token endpoint (defaults to `/api/connection-details`) |
-| `OPENAI_API_KEY` | No | OpenAI API key (if needed by frontend) |
+| Variable                            | Required | Description                                                    |
+| ----------------------------------- | -------- | -------------------------------------------------------------- |
+| `NEXT_PUBLIC_LIVEKIT_URL`           | Yes      | LiveKit WebSocket server URL                                   |
+| `NEXT_PUBLIC_CONN_DETAILS_ENDPOINT` | No       | Backend token endpoint (defaults to `/api/connection-details`) |
+| `OPENAI_API_KEY`                    | No       | OpenAI API key (if needed by frontend)                         |
 
 **Docker Compose with Backend:**
 
@@ -352,6 +359,7 @@ services:
 Then run: `docker-compose up -d`
 
 **See `DOCKER.md` for:**
+
 - Detailed setup and troubleshooting
 - Network configuration (local, Docker, production)
 - Health check configuration
@@ -361,11 +369,13 @@ Then run: `docker-compose up -d`
 ### Deployment Targets
 
 #### Vercel (Recommended)
+
 - Automatic deploys on git push
 - Zero-configuration for Next.js
 - See `../vercel.json` if custom config needed
 
 #### Render.com
+
 - Uses `render.yaml` in the web/ directory for configuration
 - Automatically enables pnpm via corepack
 - Build command: `pnpm install && pnpm build`
@@ -380,6 +390,7 @@ Then run: `docker-compose up -d`
   ```
 
 **Setup:**
+
 1. In Render.com dashboard, create a new "Web Service"
 2. Connect your GitHub repository
 3. Set the root directory to `web`
@@ -387,19 +398,23 @@ Then run: `docker-compose up -d`
 5. Push to main branch to auto-deploy
 
 #### Docker
+
 - Use included `Dockerfile` and `docker-compose.yml` (see Docker Deployment section above)
 - Multi-stage build optimized for production
 - Run: `docker build -t ptee-voice-agent-frontend:latest web/`
 
 #### Docker Compose
+
 - Multi-service setup with backend (`docker-compose.yml`)
 - Run: `docker-compose up -d`
 
 #### Kubernetes
+
 - Container-ready with health checks configured
 - Use Docker image built from Dockerfile
 
 #### LiveKit Cloud Sandbox
+
 - Direct deployment via `lk app create --template agent-starter-react`
 
 ## Important File Locations

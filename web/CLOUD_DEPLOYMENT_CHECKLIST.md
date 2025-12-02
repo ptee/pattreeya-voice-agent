@@ -26,6 +26,7 @@ OPENAI_API_KEY=sk-...
 ### For Docker Deployment
 
 Build command:
+
 ```bash
 docker build -t pattreeya-frontend . \
   --build-arg NEXT_PUBLIC_LIVEKIT_URL=wss://voiceagent-46wqrz65.livekit.cloud \
@@ -33,6 +34,7 @@ docker build -t pattreeya-frontend . \
 ```
 
 Run command:
+
 ```bash
 docker run -p 3000:3000 \
   -e NEXT_PUBLIC_LIVEKIT_URL=wss://voiceagent-46wqrz65.livekit.cloud \
@@ -148,13 +150,13 @@ If deployment has issues:
 
 ## Common Issues
 
-| Issue | Solution |
-|-------|----------|
-| 404 not found | Check environment variables are set correctly |
-| JWT invalid | Verify backend API credentials match LiveKit Cloud |
-| CORS errors | Enable CORS on backend API |
-| Slow performance | Check CDN, image optimization, build size |
-| Connection timeout | Verify backend URL is accessible, check firewall |
+| Issue              | Solution                                           |
+| ------------------ | -------------------------------------------------- |
+| 404 not found      | Check environment variables are set correctly      |
+| JWT invalid        | Verify backend API credentials match LiveKit Cloud |
+| CORS errors        | Enable CORS on backend API                         |
+| Slow performance   | Check CDN, image optimization, build size          |
+| Connection timeout | Verify backend URL is accessible, check firewall   |
 
 ---
 

@@ -15,7 +15,7 @@ services:
       - key: NEXT_PUBLIC_LIVEKIT_URL
         value: wss://voiceagent-46wqrz65.livekit.cloud
       - key: NEXT_PUBLIC_CONN_DETAILS_ENDPOINT
-        value: https://voiceagent-46wqrz65.livekit.cloud/api/connection-details  # Change to your backend
+        value: https://voiceagent-46wqrz65.livekit.cloud/api/connection-details # Change to your backend
       - key: NODE_VERSION
         value: 22.16.0
 

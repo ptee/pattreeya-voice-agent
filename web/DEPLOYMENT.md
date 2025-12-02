@@ -69,6 +69,7 @@ Your frontend will be live at `https://your-app.vercel.app`
 #### Step 4: Update Backend Configuration
 
 Update your backend API endpoint in Vercel environment variables:
+
 ```
 NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=https://your-api-domain.com/api/connection-details
 ```
@@ -195,6 +196,7 @@ Visit http://localhost:3000
 ### Configure for Local Backend
 
 Update `web/.env.local`:
+
 ```env
 NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=http://localhost:8019/api/connection-details
 ```
@@ -208,6 +210,7 @@ NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=http://localhost:8019/api/connection-details
 **Issue**: "Failed to fetch connection details"
 
 **Solution**:
+
 1. Verify backend is running and accessible
 2. Check `NEXT_PUBLIC_CONN_DETAILS_ENDPOINT` is correct
 3. Ensure CORS is enabled on backend
@@ -218,6 +221,7 @@ NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=http://localhost:8019/api/connection-details
 **Issue**: "Invalid JWT" when connecting to LiveKit
 
 **Solution**:
+
 1. Verify API credentials in backend match LiveKit Cloud
 2. Check that tokens are being generated correctly
 3. Ensure token has proper LiveKit claims
@@ -227,6 +231,7 @@ NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=http://localhost:8019/api/connection-details
 **Issue**: Build errors during deployment
 
 **Solution**:
+
 1. Check Node.js version (18+)
 2. Verify all dependencies are installed
 3. Look for TypeScript errors: `pnpm type-check`
@@ -237,11 +242,13 @@ NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=http://localhost:8019/api/connection-details
 ## Security Notes
 
 ⚠️ **Never commit `.env.local` to version control**
+
 - Add to `.gitignore`
 - Use platform-specific secrets management
 - Rotate API keys regularly
 
 ✅ **Best Practices**:
+
 - Use environment variables for sensitive data
 - Enable HTTPS/WSS for all connections
 - Set restrictive CORS policies
@@ -284,6 +291,7 @@ gzip_types text/plain application/json;
 5. **Monitor logs** after deployment
 
 For more help, see:
+
 - [Vercel Deployment Docs](https://vercel.com/docs)
 - [Next.js Deployment](https://nextjs.org/learn/deployment)
 - [LiveKit Documentation](https://docs.livekit.io)

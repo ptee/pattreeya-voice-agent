@@ -94,22 +94,23 @@ docker-compose up -d
 ```
 
 This will start both services and they can communicate via service names:
+
 - Frontend calls `http://backend:8019/api/connection-details`
 
 ## Environment Variables
 
 ### Required for Frontend
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_LIVEKIT_URL` | LiveKit WebSocket URL | `wss://voiceagent-46wqrz65.livekit.cloud` |
+| Variable                            | Description                               | Example                                        |
+| ----------------------------------- | ----------------------------------------- | ---------------------------------------------- |
+| `NEXT_PUBLIC_LIVEKIT_URL`           | LiveKit WebSocket URL                     | `wss://voiceagent-46wqrz65.livekit.cloud`      |
 | `NEXT_PUBLIC_CONN_DETAILS_ENDPOINT` | Backend API endpoint for token generation | `http://localhost:8019/api/connection-details` |
 
 ### Optional
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key (if frontend uses it directly) | Empty |
+| Variable         | Description                                   | Default |
+| ---------------- | --------------------------------------------- | ------- |
+| `OPENAI_API_KEY` | OpenAI API key (if frontend uses it directly) | Empty   |
 
 ## Network Configuration
 
@@ -122,6 +123,7 @@ Frontend (3000) → Backend (8019)
 ```
 
 Use this endpoint:
+
 ```
 NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=http://localhost:8019/api/connection-details
 ```
@@ -139,6 +141,7 @@ services:
 ```
 
 Update `docker-compose.yml` backend service and set:
+
 ```
 NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=http://backend:8019/api/connection-details
 ```
@@ -154,6 +157,7 @@ NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=https://api.yourdomain.com/api/connection-deta
 ## Health Check
 
 The container includes a health check that:
+
 - Runs every 30 seconds
 - Waits 40 seconds before first check (start-period)
 - Times out after 3 seconds
@@ -215,11 +219,13 @@ SECRET_KEY=...
 ### Reduce Image Size
 
 The multi-stage build produces a smaller image by:
+
 - Using `node:22-alpine` (lightweight base image)
 - Only copying build artifacts to runtime stage
 - Not including node_modules in final image
 
 Current approximate sizes:
+
 - Builder stage: ~800MB (temporary)
 - Final image: ~150MB
 
@@ -260,9 +266,9 @@ Update `next.config.ts` for Docker-specific settings:
 
 ```typescript
 export default {
-  output: 'standalone',  // Already configured for docker
+  output: 'standalone', // Already configured for docker
   // Add other Next.js config here
-}
+};
 ```
 
 ### Multi-Architecture Build
@@ -286,13 +292,13 @@ metadata:
   name: ptee-frontend
 spec:
   containers:
-  - name: frontend
-    image: ptee-voice-agent-frontend:latest
-    ports:
-    - containerPort: 3000
-    env:
-    - name: NEXT_PUBLIC_LIVEKIT_URL
-      value: "wss://voiceagent-46wqrz65.livekit.cloud"
-    - name: NEXT_PUBLIC_CONN_DETAILS_ENDPOINT
-      value: "http://backend:8019/api/connection-details"
+    - name: frontend
+      image: ptee-voice-agent-frontend:latest
+      ports:
+        - containerPort: 3000
+      env:
+        - name: NEXT_PUBLIC_LIVEKIT_URL
+          value: 'wss://voiceagent-46wqrz65.livekit.cloud'
+        - name: NEXT_PUBLIC_CONN_DETAILS_ENDPOINT
+          value: 'http://backend:8019/api/connection-details'
 ```
