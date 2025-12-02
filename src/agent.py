@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -15,7 +16,7 @@ from livekit.agents import (
     function_tool,
     RunContext,
 )
-from livekit.plugins import noise_cancellation, silero, elevenlabs, tavus
+from livekit.plugins import noise_cancellation, silero, elevenlabs, tavus, simli
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from config import get_config
@@ -358,13 +359,26 @@ async def my_agent(ctx: JobContext):
     # # Start the avatar and wait for it to join
     # await avatar.start(session, room=ctx.room)
 
-    avatar = tavus.AvatarSession(
+    tavus_avatar = False
+    avatar = None
+    if tavus_avatar:  # Set to True to enable Tavus avatar
+        avatar = tavus.AvatarSession(
         replica_id="r9d30b0e55ac",  # ID of the Tavus replica to use
         persona_id="p9cb09c3c7bc",  # ID of the Tavus persona to use (see preceding section for configuration details)
-    )
+        )
+    else:
+        simliAPIKey = os.getenv("SIMLI_API_KEY")
+        simliFaceID = os.getenv("SIMLI_FACE_ID")
 
-    # Start the avatar and wait for it to join
-    await avatar.start(session, room=ctx.room)
+        avatar = simli.AvatarSession(
+            simli_config=simli.SimliConfig(
+                api_key=simliAPIKey,
+                face_id=simliFaceID,
+            ),
+        )
+    if avatar is not None:
+        # Start the avatar and wait for it to join
+        await avatar.start(session, room=ctx.room)
 
     # Start your agent session with the user
     await session.start(
