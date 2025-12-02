@@ -17,7 +17,13 @@ const LIVEKIT_URL = process.env.LIVEKIT_URL;
 // don't cache the results
 export const revalidate = 0;
 
+export async function GET() {
+  
+  return NextResponse.json({ error: 'Use POST method' }, { status: 405 });
+}
+
 export async function POST(req: Request) {
+  
   try {
     if (LIVEKIT_URL === undefined) {
       throw new Error('LIVEKIT_URL is not defined');
@@ -58,6 +64,7 @@ export async function POST(req: Request) {
   } catch (error) {
     if (error instanceof Error) {
       console.error(error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
       return new NextResponse(error.message, { status: 500 });
     }
   }
