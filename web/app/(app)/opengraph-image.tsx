@@ -139,21 +139,19 @@ export default async function Image() {
   const logoSize = scaleImageSize(logoDimensions, 24);
 
   return new ImageResponse(
-    (
-      // ImageResponse JSX element
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: size.width,
-          height: size.height,
-          backgroundImage: `url(${bgSrcBase64})`,
-          backgroundSize: '100% 100%',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-      >
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: size.width,
+        height: size.height,
+        backgroundImage: `url(${bgSrcBase64})`,
+        backgroundSize: '100% 100%',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
         {/* wordmark */}
         <div
           style={{
@@ -221,9 +219,7 @@ export default async function Image() {
             {pageTitle}
           </div>
         </div>
-      </div>
-    ),
-    // ImageResponse options
+      </div>,
     {
       // For convenience, we can re-use the exported opengraph-image
       // size config to also set the ImageResponse's width and height.
