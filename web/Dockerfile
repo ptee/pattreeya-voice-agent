@@ -24,6 +24,8 @@ FROM node:22-alpine
 
 WORKDIR /app
 
+ENV NODE_ENV=production
+
 # Install pnpm for running next start
 RUN npm install -g pnpm@10.2.0
 
@@ -37,7 +39,8 @@ COPY --from=builder /app/public ./public
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
+    adduser -S nextjs -u 1001 && \
+    chown -R nextjs:nodejs /app
 
 USER nextjs
 
@@ -45,8 +48,7 @@ USER nextjs
 EXPOSE 3000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
 # Start the Next.js application
 CMD ["pnpm", "start"]
+# CMD ["node_modules/.bin/next", "start"]

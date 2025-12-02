@@ -1,6 +1,7 @@
 .env
 credentials/
 .env.*
+livekit.toml
 !.env.example
 .DS_Store
 __pycache__
@@ -11,3 +12,4 @@ KMS
 *.egg-info
 .pytest_cache
 .ruff_cache
+*~

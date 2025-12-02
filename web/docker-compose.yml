@@ -10,13 +10,20 @@ services:
       - '3001:3000'
     environment:
       # LiveKit Configuration
-      NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-wss://voiceagent-46wqrz65.livekit.cloud}
-
-      # Backend API Endpoint (where token is generated)
-      NEXT_PUBLIC_CONN_DETAILS_ENDPOINT: ${NEXT_PUBLIC_CONN_DETAILS_ENDPOINT:-http://voiceagent-46wqrz65.livekit.cloud/api/connection-details}
-
-      # Optional: OpenAI API Key (if needed by frontend)
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      LIVEKIT_URL: ${LIVEKIT_URL:-}
+      NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      TAVUS_API_KEY: ${TAVUS_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+      COLLECTION_NAME : ${COLLECTION_NAME:-}
+      QDRANT_URL: ${QDRANT_URL:-}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      POSTGRESQL_URL: ${POSTGRESQL_URL:-}
 
     # Restart policy
     restart: unless-stopped
