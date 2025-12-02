@@ -34,7 +34,7 @@ class ConfigManager:
         # Qdrant Vector Database configuration
         self.qdrant_url = os.getenv("QDRANT_URL")
         self.qdrant_api_key = os.getenv("QDRANT_API_KEY")
-        self.qdrant_collection = os.getenv("QDRANT_VECTOR_COLLECTION", "cv_documents")
+        self.qdrant_collection = os.getenv("COLLECTION_NAME", "pt_cv")
 
         # Validate required configuration
         self._validate_config()
