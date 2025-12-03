@@ -1,6 +1,18 @@
-# Docker Setup for Frontend
+# Docker Setup for Voice Agent Frontend
 
-This guide explains how to build and run the Next.js frontend in Docker.
+This guide explains how to build and run the Next.js voice agent frontend in Docker. The frontend uses a multi-stage build process for optimal image size and production readiness.
+
+## Overview
+
+The Dockerfile uses a **multi-stage build**:
+1. **Builder stage** (node:22-alpine): Compiles TypeScript and bundles Next.js
+2. **Runtime stage** (node:22-alpine): Runs the optimized application with minimal dependencies
+
+**Key features:**
+- Node.js 22 Alpine (lightweight, ~150MB final image)
+- Non-root user (`nextjs`) for security
+- Health check for monitoring
+- Optimized for LiveKit integration
 
 ## Quick Start
 
@@ -10,31 +22,37 @@ This guide explains how to build and run the Next.js frontend in Docker.
 # From the web/ directory
 docker build -t ptee-voice-agent-frontend:latest .
 
-# Or with a specific tag
+# Or with a specific semantic tag
 docker build -t ptee-voice-agent-frontend:v0.1.0 .
+
+# Build with BuildKit for faster builds (optional)
+DOCKER_BUILDKIT=1 docker build -t ptee-voice-agent-frontend:latest .
 ```
 
 ### Run the Container
 
 ```bash
-# Basic run on port 3001 (default from docker-compose.yml)
+# Basic run on port 3001
 docker run -p 3001:3000 ptee-voice-agent-frontend:latest
 
-# Or use port 3000 if available
-docker run -p 3000:3000 ptee-voice-agent-frontend:latest
-
-# With custom environment variables
+# Run with minimal required environment variables
 docker run -p 3001:3000 \
   -e NEXT_PUBLIC_LIVEKIT_URL=wss://your-livekit-server.cloud \
+  ptee-voice-agent-frontend:latest
+
+# Run with full configuration (backend integration)
+docker run -p 3001:3000 \
+  -e NEXT_PUBLIC_LIVEKIT_URL=wss://voiceagent-46wqrz65.livekit.cloud \
   -e NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=http://your-backend:8019/api/connection-details \
   ptee-voice-agent-frontend:latest
 
-# Run in detached mode with a name
+# Run in detached mode with health monitoring
 docker run -d \
   --name ptee-frontend \
   -p 3001:3000 \
   -e NEXT_PUBLIC_LIVEKIT_URL=wss://voiceagent-46wqrz65.livekit.cloud \
   -e NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=http://localhost:8019/api/connection-details \
+  --restart unless-stopped \
   ptee-voice-agent-frontend:latest
 ```
 
@@ -156,18 +174,28 @@ NEXT_PUBLIC_CONN_DETAILS_ENDPOINT=https://api.yourdomain.com/api/connection-deta
 
 ## Health Check
 
-The container includes a health check that:
+To enable container health monitoring, add a health check to the Dockerfile:
 
-- Runs every 30 seconds
-- Waits 40 seconds before first check (start-period)
-- Times out after 3 seconds
-- Retries up to 3 times before marking unhealthy
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+```
 
-Check container health:
+Check container health status:
 
 ```bash
+# View health status in ps output
 docker ps --format="{{.Names}}\t{{.Status}}"
+
+# Example output:
+# ptee-frontend  Up 2 minutes (healthy)
 ```
+
+The health check:
+- Runs every 30 seconds
+- Waits 40 seconds before first check (allows startup time)
+- Times out after 3 seconds
+- Marks unhealthy after 3 consecutive failures
 
 ## Troubleshooting
 
@@ -252,23 +280,53 @@ docker build -t ptee-voice-agent-frontend:latest .
 
 ## Advanced Configuration
 
+### Dockerfile Build Process
+
+The build uses a multi-stage approach optimized for production:
+
+**Builder Stage:**
+- Uses `node:22-alpine` for minimal footprint
+- Installs pnpm 10.2.0 globally
+- Uses `pnpm install --frozen-lockfile` for reproducible builds
+- Runs `pnpm build` to compile TypeScript and bundle Next.js
+
+**Runtime Stage:**
+- Copies only necessary files (`.next`, `node_modules`, `public`)
+- Creates non-root `nextjs` user for security
+- Runs as PID 1 with `node_modules/.bin/next start`
+- Minimal attack surface with only runtime dependencies
+
 ### Custom Node Arguments
 
-Modify the Dockerfile's CMD to pass Node.js arguments:
+To modify memory or other Node.js settings, update the Dockerfile's CMD:
 
 ```dockerfile
-CMD ["node", "--max-old-space-size=1024", "server.js"]
+# For increased heap size
+CMD ["node", "--max-old-space-size=1024", "node_modules/.bin/next", "start"]
+
+# For debugging (not recommended in production)
+CMD ["node", "--inspect=0.0.0.0:9229", "node_modules/.bin/next", "start"]
 ```
 
 ### Custom Next.js Configuration
 
-Update `next.config.ts` for Docker-specific settings:
+The `next.config.ts` is minimal but can be extended:
 
 ```typescript
-export default {
-  output: 'standalone', // Already configured for docker
-  // Add other Next.js config here
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  // Add custom config for specific needs:
+  // output: 'export', // For static export (incompatible with API routes)
+  // productionBrowserSourceMaps: false, // Reduce bundle size
+  // compress: true, // Already default in production
+  // swcMinify: true, // Already default in production
 };
+
+export default nextConfig;
 ```
 
 ### Multi-Architecture Build
@@ -278,6 +336,29 @@ Build for multiple architectures:
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 -t ptee-voice-agent-frontend:latest .
 ```
+
+### Dependency Management
+
+The project uses **pnpm 10.2.0** with a locked dependency file:
+
+```bash
+# Lock file must be present for reproducible builds
+# Committed to git: pnpm-lock.yaml
+
+# To update dependencies (be cautious in production):
+pnpm update --latest
+pnpm install --frozen-lockfile  # Rebuild with lock
+
+# Rebuild Docker image after dependency updates
+docker build -t ptee-voice-agent-frontend:latest .
+```
+
+Key dependencies in production:
+- `next` 15.5.2 - React framework
+- `react` 19.0.0 - UI library
+- `@livekit/components-react` 2.9.15 - LiveKit UI components
+- `livekit-server-sdk` 2.13.2 - Token generation
+- `tailwindcss` 4.x - CSS framework
 
 ## Integration with Kubernetes
 
@@ -301,4 +382,33 @@ spec:
           value: 'wss://voiceagent-46wqrz65.livekit.cloud'
         - name: NEXT_PUBLIC_CONN_DETAILS_ENDPOINT
           value: 'http://backend:8019/api/connection-details'
+      livenessProbe:
+        httpGet:
+          path: /
+          port: 3000
+        initialDelaySeconds: 40
+        periodSeconds: 30
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
 ```
+
+## Summary
+
+| Task                        | Command                                                               |
+| --------------------------- | --------------------------------------------------------------------- |
+| Build image                 | `docker build -t ptee-voice-agent-frontend:latest .`                 |
+| Run container               | `docker run -p 3001:3000 ptee-voice-agent-frontend:latest`            |
+| Use docker-compose          | `docker-compose up -d`                                                |
+| View logs                   | `docker logs ptee-frontend` or `docker-compose logs -f frontend`      |
+| Stop container              | `docker stop ptee-frontend`                                           |
+| Remove container            | `docker rm ptee-frontend`                                             |
+| Check health                | `docker ps --format="{{.Names}}\t{{.Status}}"`                        |
+| Debug interactive shell     | `docker run -it ptee-voice-agent-frontend:latest /bin/sh`            |
+| Clean up unused resources   | `docker system prune`                                                 |
+
+For production deployments, refer to the **Production Checklist** section above and ensure all environment variables are properly configured.

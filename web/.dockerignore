@@ -3,6 +3,8 @@
 # Dependencies (will be reinstalled)
 node_modules
 
+.env*.local
+
 # Logs
 npm-debug.log
 pnpm-debug.log

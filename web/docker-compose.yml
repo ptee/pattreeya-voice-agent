@@ -8,33 +8,17 @@ services:
     image: voice-agent-frontend:latest
     ports:
       - '3001:3000'
+    env_file:
+      - .env
     environment:
-      # LiveKit Configuration
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
-      LIVEKIT_URL: ${LIVEKIT_URL:-}
-      NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
-      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
-      TAVUS_API_KEY: ${TAVUS_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
-      COLLECTION_NAME : ${COLLECTION_NAME:-}
-      QDRANT_URL: ${QDRANT_URL:-}
-      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
-      POSTGRESQL_URL: ${POSTGRESQL_URL:-}
-
+      - NODE_ENV=production
     # Restart policy
     restart: unless-stopped
-
-    # Healthcheck
     healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000']
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
       interval: 30s
-      timeout: 3s
+      timeout: 10s
       retries: 3
-      start_period: 40s
 
     # Optional: Override command if needed
     # command: node server.js --hostname 0.0.0.0

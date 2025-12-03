@@ -50,5 +50,5 @@ EXPOSE 3000
 # Health check
 
 # Start the Next.js application
-CMD ["pnpm", "start"]
-# CMD ["node_modules/.bin/next", "start"]
+#CMD ["pnpm", "start"]
+CMD ["node_modules/.bin/next", "start"]
