@@ -16,7 +16,7 @@ from livekit.agents import (
     function_tool,
     RunContext,
 )
-from livekit.plugins import noise_cancellation, silero, elevenlabs, tavus, simli
+from livekit.plugins import noise_cancellation, silero, elevenlabs, tavus, simli, bey
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from config import get_config
@@ -322,9 +322,8 @@ async def my_agent(ctx: JobContext):
         # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
         # See all available models at https://docs.livekit.io/agents/models/llm/
         llm=inference.LLM(model="openai/gpt-4.1-mini"),
-        # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
-        # See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
-        # -pt- my default
+        # TTS Cartesia Sonic-3 50$/1M chars
+        # 11Labs Flash v2.5 20$/1M chars 150$/1M chars 
         tts=inference.TTS(
             model="cartesia/sonic-3", voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
         ),
@@ -359,23 +358,29 @@ async def my_agent(ctx: JobContext):
     # # Start the avatar and wait for it to join
     # await avatar.start(session, room=ctx.room)
 
-    tavus_avatar = False
-    avatar = None
-    if tavus_avatar:  # Set to True to enable Tavus avatar
-        avatar = tavus.AvatarSession(
-        replica_id="r9d30b0e55ac",  # ID of the Tavus replica to use
-        persona_id="p9cb09c3c7bc",  # ID of the Tavus persona to use (see preceding section for configuration details)
-        )
-    else:
-        simliAPIKey = os.getenv("SIMLI_API_KEY")
-        simliFaceID = os.getenv("SIMLI_FACE_ID")
+    #providers = ["tavus", "simli", "bey"]
+    provider ="bey"
+    
+    match provider:
+        case "tavus":  # Set to True to enable Tavus avatar
+            avatar = tavus.AvatarSession(
+                replica_id="r9d30b0e55ac",  # ID of the Tavus replica to use
+                persona_id="p9cb09c3c7bc",  # ID of the Tavus persona to use (see preceding section for configuration details)
+            )
+        case "simli":
+            avatar = simli.AvatarSession(
+                simli_config=simli.SimliConfig(
+                    api_key=os.getenv("SIMLI_API_KEY"),
+                    face_id="cace3ef7-a4c4-425d-a8cf-a5358eb0c427",
+                ),
+            )
+        case "bey":
+            avatar = bey.AvatarSession(
+                avatar_id="694c83e2-8895-4a98-bd16-56332ca3f449",
+            )
+        case _:
+            avatar = None
 
-        avatar = simli.AvatarSession(
-            simli_config=simli.SimliConfig(
-                api_key=simliAPIKey,
-                face_id=simliFaceID,
-            ),
-        )
     if avatar is not None:
         # Start the avatar and wait for it to join
         await avatar.start(session, room=ctx.room)
