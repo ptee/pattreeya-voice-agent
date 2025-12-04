@@ -18,6 +18,8 @@ from livekit.agents import (
 )
 from livekit.plugins import noise_cancellation, silero, elevenlabs, tavus, simli, bey
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
+import sys
+is_console_mode = 'console' in sys.argv
 
 from config import get_config
 from mcp_client import get_mcp_client
@@ -381,8 +383,8 @@ async def my_agent(ctx: JobContext):
         case _:
             avatar = None
 
-    if avatar is not None:
-        # Start the avatar and wait for it to join
+    if avatar is not None and not is_console_mode:
+        # Start the avatar and wait for it to join if not in console mode
         await avatar.start(session, room=ctx.room)
 
     # Start your agent session with the user
