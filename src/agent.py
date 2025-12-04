@@ -321,7 +321,7 @@ async def my_agent(ctx: JobContext):
         stt=inference.STT(model="deepgram/nova-3", language="multi"),
         # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
         # See all available models at https://docs.livekit.io/agents/models/llm/
-        llm=inference.LLM(model="openai/gpt-4.1-mini"),
+        llm=inference.LLM(model="openai/gpt-4.1-nano"),
         # TTS Cartesia Sonic-3 50$/1M chars
         # 11Labs Flash v2.5 20$/1M chars 150$/1M chars 
         tts=inference.TTS(

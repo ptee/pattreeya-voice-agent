@@ -25,7 +25,7 @@ class ConfigManager:
 
         # OpenAI/LLM configuration
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
-        self.llm_model = os.getenv("LLM_MODEL", "openai/gpt-4.1-mini")
+        self.llm_model = os.getenv("LLM_MODEL", "openai/gpt-4.1-nano")
         self.embedding_model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
         # PostgreSQL configuration

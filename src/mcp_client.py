@@ -1,22 +1,22 @@
 """
 MCP Client for CV Database Access
-Wrapper for MCP Server tools to be used by LLM agents
+Direct wrapper for DatabaseTools from MCP Server
 """
 
 import logging
 from typing import Dict, List, Any, Optional
 
 from config import get_config
-from mcp_server import DatabaseTools, create_mcp_server
+from mcp_server import DatabaseTools
 
 logger = logging.getLogger(__name__)
 
 
 class MCPClient:
-    """Client for accessing MCP database tools"""
+    """Client for accessing MCP database tools via DatabaseTools"""
 
     def __init__(self, config=None):
-        """Initialize MCP client"""
+        """Initialize MCP client with DatabaseTools"""
         try:
             self.config = config or get_config()
             self.tools = DatabaseTools(self.config)
@@ -25,58 +25,35 @@ class MCPClient:
             logger.error(f"Failed to initialize MCP Client: {e}")
             raise
 
-    # ========================================================================
-    # Tool 1: Get CV Summary
-    # ========================================================================
+    # Direct pass-through methods to DatabaseTools
     def get_cv_summary(self) -> Dict[str, Any]:
         """Get a summary of the CV including role, experience, and key stats"""
         return self.tools.get_cv_summary()
 
-    # ========================================================================
-    # Tool 2: Search Company Experience
-    # ========================================================================
     def search_company_experience(self, company_name: str) -> Dict[str, Any]:
         """Find all jobs at a specific company"""
         return self.tools.search_company_experience(company_name)
 
-    # ========================================================================
-    # Tool 3: Search Technology Experience
-    # ========================================================================
     def search_technology_experience(self, technology: str) -> Dict[str, Any]:
         """Find all jobs using a specific technology"""
         return self.tools.search_technology_experience(technology)
 
-    # ========================================================================
-    # Tool 4: Search Work by Date
-    # ========================================================================
     def search_work_by_date(self, start_year: int, end_year: int) -> Dict[str, Any]:
         """Find work experience within a date range"""
         return self.tools.search_work_by_date(start_year, end_year)
 
-    # ========================================================================
-    # Tool 5: Search Education
-    # ========================================================================
     def search_education(self, institution: Optional[str] = None, degree: Optional[str] = None) -> Dict[str, Any]:
         """Find education records by institution or degree"""
         return self.tools.search_education(institution, degree)
 
-    # ========================================================================
-    # Tool 6: Search Publications
-    # ========================================================================
     def search_publications(self, year: Optional[int] = None) -> Dict[str, Any]:
         """Search publications by year or get all publications"""
         return self.tools.search_publications(year)
 
-    # ========================================================================
-    # Tool 7: Search Skills
-    # ========================================================================
     def search_skills(self, category: str) -> Dict[str, Any]:
         """Find skills by category"""
         return self.tools.search_skills(category)
 
-    # ========================================================================
-    # Tool 8: Search Awards and Certifications
-    # ========================================================================
     def search_awards_certifications(self, award_type: Optional[str] = None) -> Dict[str, Any]:
         """Find awards and certifications records"""
         return self.tools.search_awards_certifications(award_type)

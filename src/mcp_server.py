@@ -21,6 +21,47 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def _format_result(tool_name: str, status: str, results: Any = None, error: str = None, **extra_fields) -> Dict[str, Any]:
+    """
+    Format standardized response for all MCP tools.
+
+    Args:
+        tool_name: Name of the tool that was called
+        status: "success" or "error"
+        results: Tool results (list or dict)
+        error: Error message if status is "error"
+        **extra_fields: Additional fields to include (e.g., company, category, date_range)
+
+    Returns:
+        Formatted result dictionary
+    """
+    response = {
+        "status": status,
+        "tool": tool_name,
+    }
+
+    if status == "success":
+        if results is not None:
+            if isinstance(results, list):
+                response["results_count"] = len(results)
+                response["results"] = results
+            elif isinstance(results, dict):
+                response.update(results)
+            else:
+                response["results"] = results
+    else:
+        response["error"] = error
+
+    # Add any extra fields (like company, category, date_range, etc.)
+    response.update(extra_fields)
+
+    return response
+
+
+# ============================================================================
 # DATABASE TOOLS
 # ============================================================================
 
@@ -111,26 +152,14 @@ class DatabaseTools:
             if result:
                 summary_dict = dict(zip(col_names, result))
                 logger.info("CV summary retrieved successfully")
-                return {
-                    "status": "success",
-                    "tool": "get_cv_summary",
-                    "summary": summary_dict
-                }
+                return _format_result("get_cv_summary", "success", summary=summary_dict)
             else:
                 logger.warning("CV not found in database")
-                return {
-                    "status": "error",
-                    "tool": "get_cv_summary",
-                    "error": "CV not found"
-                }
+                return _format_result("get_cv_summary", "error", error="CV not found")
 
         except Exception as e:
             logger.error(f"Error in get_cv_summary: {e}")
-            return {
-                "status": "error",
-                "tool": "get_cv_summary",
-                "error": str(e)
-            }
+            return _format_result("get_cv_summary", "error", error=str(e))
 
     # ========================================================================
     # TOOL 2: Search Company Experience
