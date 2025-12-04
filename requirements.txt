@@ -1,0 +1,16 @@
+# Core Dependencies
+livekit-agents[elevenlabs,silero,tavus,turn-detector]~=1.2
+livekit-plugins-noise-cancellation~=0.2
+livekit>=0.8
+python-dotenv
+psycopg2-binary>=2.9
+qdrant-client>=1.0
+langchain-openai>=0.1
+langchain-community>=0.1
+flask>=3.0
+flask-cors>=4.0
+
+# Development Dependencies (optional)
+# pytest
+# pytest-asyncio
+# ruff
