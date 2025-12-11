@@ -36,6 +36,7 @@ class ConfigManager:
         self.qdrant_api_key = os.getenv("QDRANT_API_KEY")
         self.qdrant_collection = os.getenv("COLLECTION_NAME", "pt_cv")
 
+        self.avatar_provider = os.getenv("AVATAR_PROVIDER", "none")
         # Validate required configuration
         self._validate_config()
 
@@ -100,6 +101,10 @@ class ConfigManager:
     def get_qdrant_collection(self) -> str:
         """Get Qdrant collection name"""
         return self.qdrant_collection
+    
+    def get_avatar_provider(self) -> str:
+        """Get Avatar provider name"""
+        return self.avatar_provider
 
     @classmethod
     def get_instance(cls) -> "ConfigManager":

@@ -76,7 +76,30 @@ export function TrackDeviceSelect({
     onActiveDeviceChange?.(deviceId);
   };
 
-  const filteredDevices = useMemo(() => devices.filter((d) => d.deviceId !== ''), [devices]);
+  // First filter out empty deviceIds, then remove duplicates
+  const filteredDevices = useMemo(() => {
+    // Filter out devices with empty deviceId
+    const nonEmptyDevices = devices.filter((d) => d.deviceId !== '');
+    
+    // Remove duplicate devices based on deviceId
+    const seen = new Map<string, MediaDeviceInfo>();
+    const uniqueDevices: MediaDeviceInfo[] = [];
+    
+    for (const device of nonEmptyDevices) {
+      // Create a unique key that combines deviceId, label, and kind for better deduplication
+      const key = `${device.deviceId}-${device.label}-${device.kind}`;
+      
+      if (!seen.has(device.deviceId)) {
+        seen.set(device.deviceId, device);
+        uniqueDevices.push(device);
+      } else {
+        // Optional: Log duplicate detection for debugging
+        console.warn(`Duplicate device detected: ${device.label} (${device.deviceId})`);
+      }
+    }
+    
+    return uniqueDevices;
+  }, [devices]);
 
   if (filteredDevices.length < 2) {
     return null;
