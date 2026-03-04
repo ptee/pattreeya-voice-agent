@@ -1,64 +1,169 @@
 """
 MCP Server for CV Database Access
 Provides standardized tools for querying PostgreSQL and Qdrant vector DB
+
+Refactored to use:
+- ConfigManager (config.py) for unified configuration
+- PostgreSQLManager and QdrantManager (db_manager.py) for database operations
+- Custom exceptions (exceptions.py) for better error handling
 """
 
+import json
 import logging
 from typing import Dict, List, Any, Optional
-from qdrant_client import QdrantClient
-from qdrant_client.models import Filter, FieldCondition, MatchValue
+
 from langchain_openai import OpenAIEmbeddings
+from qdrant_client.models import Filter, FieldCondition, MatchValue
 
-from config import get_config
-from db_manager import get_db_manager, convert_dates
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+from config import get_config, ConfigManager
+from db_manager import get_postgres_manager, get_qdrant_manager, PostgreSQLManager, QdrantManager
+from exceptions import (
+    PostgreSQLConnectionError,
+    QdrantConnectionError,
+    DatabaseQueryError,
+    CVNotFoundError,
+    InvalidUUIDError,
+    MCPServerError,
 )
+
+# Initialize logger (will be configured by config.configure_logging() at application startup)
 logger = logging.getLogger(__name__)
 
-
 # ============================================================================
-# HELPER FUNCTIONS
+# DIAGNOSTIC UTILITIES
 # ============================================================================
 
-def _format_result(tool_name: str, status: str, results: Any = None, error: str = None, **extra_fields) -> Dict[str, Any]:
+def diagnose_cv_availability() -> Dict[str, Any]:
     """
-    Format standardized response for all MCP tools.
-
-    Args:
-        tool_name: Name of the tool that was called
-        status: "success" or "error"
-        results: Tool results (list or dict)
-        error: Error message if status is "error"
-        **extra_fields: Additional fields to include (e.g., company, category, date_range)
+    Diagnose CV data availability and provide actionable feedback.
 
     Returns:
-        Formatted result dictionary
+        dict: Status and diagnosis information
     """
-    response = {
-        "status": status,
-        "tool": tool_name,
+    diagnosis = {
+        "status": "unknown",
+        "cv_id": None,
+        "message": "",
+        "next_steps": [],
+        "troubleshooting_tips": ""
     }
 
-    if status == "success":
-        if results is not None:
-            if isinstance(results, list):
-                response["results_count"] = len(results)
-                response["results"] = results
-            elif isinstance(results, dict):
-                response.update(results)
-            else:
-                response["results"] = results
-    else:
-        response["error"] = error
+    try:
+        tools = DatabaseTools(get_config())
+        cv_id = tools.get_cv_id()
+        diagnosis["status"] = "success"
+        diagnosis["cv_id"] = cv_id
+        diagnosis["message"] = f"✓ CV ID found and validated: {cv_id[:8]}..."
+        diagnosis["troubleshooting_tips"] = "System is healthy. All CV data loaded successfully."
+        return diagnosis
 
-    # Add any extra fields (like company, category, date_range, etc.)
-    response.update(extra_fields)
+    except (CVNotFoundError, Exception) as e:
+        error_msg = str(e)
 
-    return response
+        if "No CV data found" in error_msg:
+            diagnosis["status"] = "empty_database"
+            diagnosis["message"] = "❌ cv_metadata table is EMPTY (no CV records)"
+            diagnosis["next_steps"] = [
+                "1. Run schema creation: python create_tables.py",
+                "2. Run data ingestion: python db_ingestion.py",
+                "3. Verify cv.json exists in current directory",
+                "4. Check OpenAI API key is set: echo $OPENAI_API_KEY"
+            ]
+            diagnosis["troubleshooting_tips"] = (
+                "This happens when create_tables.py was run but db_ingestion.py was not. "
+                "Run db_ingestion.py to populate the database with CV data."
+            )
+
+        elif "not a valid UUID" in error_msg:
+            diagnosis["status"] = "invalid_uuid"
+            diagnosis["message"] = "❌ Invalid UUID format in cv_metadata.id column"
+            diagnosis["next_steps"] = [
+                "1. Check corrupted data: psql -c \"SELECT * FROM cv_metadata;\"",
+                "2. Clear bad data: python -c \"from create_tables import *; " +
+                    "conn = get_connection(); conn.cursor().execute('DELETE FROM cv_metadata'); " +
+                    "conn.commit(); conn.close()\"",
+                "3. Re-ingest: python db_ingestion.py"
+            ]
+            diagnosis["troubleshooting_tips"] = (
+                "UUID validation failed. This usually means data was corrupted during ingestion. "
+                "Delete the bad record and re-ingest from cv.json."
+            )
+
+        elif "relation" in error_msg or "does not exist" in error_msg:
+            diagnosis["status"] = "schema_missing"
+            diagnosis["message"] = "❌ cv_metadata table does NOT EXIST (schema not created)"
+            diagnosis["next_steps"] = [
+                "1. Create schema: python create_tables.py",
+                "2. Verify creation: psql -c \"SELECT table_name FROM information_schema.tables WHERE table_schema='public';\"",
+                "3. Ingest data: python db_ingestion.py"
+            ]
+            diagnosis["troubleshooting_tips"] = (
+                "Schema was never created. Run create_tables.py first to create all required tables."
+            )
+
+        elif "could not connect" in error_msg or "connection refused" in error_msg:
+            diagnosis["status"] = "connection_failed"
+            diagnosis["message"] = "❌ PostgreSQL connection FAILED"
+            diagnosis["next_steps"] = [
+                "1. Check PostgreSQL status: systemctl status postgresql",
+                "2. Test connection: psql -h 212.132.98.160 -U pt -d pt_db -c \"SELECT 1;\"",
+                "3. Verify credentials in .streamlit/secrets.toml",
+                "4. Check firewall: telnet 212.132.98.160 5432"
+            ]
+            diagnosis["troubleshooting_tips"] = (
+                "PostgreSQL is offline or unreachable. Verify the server is running and the connection URL is correct."
+            )
+
+        else:
+            diagnosis["status"] = "config_error"
+            diagnosis["message"] = f"❌ Configuration error: {error_msg}"
+            diagnosis["next_steps"] = [
+                "1. Verify .streamlit/secrets.toml exists",
+                "2. Check file has correct sections: [general], [db]",
+                "3. Verify all required keys: api_key, db_url, vecdb_url, vecdb_collection, qdrant_api_key",
+                "4. Check TOML syntax (no missing quotes or colons)"
+            ]
+            diagnosis["troubleshooting_tips"] = (
+                "Configuration issue detected. Ensure .streamlit/secrets.toml is properly formatted with all required keys."
+            )
+
+    except FileNotFoundError as e:
+        diagnosis["status"] = "config_missing"
+        diagnosis["message"] = "❌ Configuration file NOT FOUND"
+        diagnosis["next_steps"] = [
+            "1. Create .streamlit directory: mkdir -p .streamlit",
+            "2. Create secrets.toml: cat > .streamlit/secrets.toml << 'EOF'",
+            "[general]",
+            "api_key = \"sk-...\"",
+            "model = \"gpt-4o-mini\"",
+            "embedding_model = \"text-embedding-3-small\"",
+            "",
+            "[db]",
+            "db_url = \"postgresql://pt:password@212.132.98.160:5432/pt_db\"",
+            "vecdb_url = \"https://kasioss.com:6333\"",
+            "vecdb_collection = \"pt_cv\"",
+            "qdrant_api_key = \"...\"",
+            "EOF"
+        ]
+        diagnosis["troubleshooting_tips"] = (
+            f"Missing configuration file at {str(e)}. "
+            "Create .streamlit/secrets.toml with all required database credentials."
+        )
+
+    except Exception as e:
+        diagnosis["status"] = "unknown_error"
+        diagnosis["message"] = f"❌ Unexpected error: {str(e)}"
+        diagnosis["next_steps"] = [
+            "1. Check error details above",
+            "2. Review logs for detailed traceback",
+            "3. Verify database connectivity: psql -c \"SELECT 1;\"",
+            "4. Check file permissions on .streamlit/secrets.toml"
+        ]
+        diagnosis["troubleshooting_tips"] = (
+            "An unexpected error occurred. Check the logs above for details."
+        )
+
+    return diagnosis
 
 
 # ============================================================================
@@ -68,48 +173,38 @@ def _format_result(tool_name: str, status: str, results: Any = None, error: str 
 class DatabaseTools:
     """MCP Tools for accessing CV database"""
 
-    def __init__(self, config=None):
-        """Initialize DatabaseTools with configuration"""
+    def __init__(self, config: Optional[ConfigManager] = None):
+        """
+        Initialize DatabaseTools with configuration.
+
+        Args:
+            config: ConfigManager instance (optional, defaults to get_config())
+        """
         self.config = config or get_config()
-        self.db = get_db_manager(self.config)
-        self.embedding_model = OpenAIEmbeddings(
-            api_key=self.config.get_openai_api_key(),
-            model=self.config.get_embedding_model()
-        )
-        self.qdrant_client = QdrantClient(
-            url=self.config.get_qdrant_url(),
-            api_key=self.config.get_qdrant_api_key()
-        )
-        # Cache CV ID to avoid repeated lookups
-        self._cv_id_cache: Optional[str] = None
-        logger.info("DatabaseTools initialized")
-
-    def _get_cv_id(self) -> str:
-        """
-        Get the CV ID from the database with caching
-
-        Returns:
-            str: CV ID or "default-cv-id" if not found
-        """
-        # Return cached value if available
-        if self._cv_id_cache:
-            return self._cv_id_cache
+        self.pg_manager = get_postgres_manager()
+        self.qdrant_manager = get_qdrant_manager()
 
         try:
-            results = self.db.execute_query(
-                "SELECT DISTINCT cv_id FROM skills LIMIT 1",
-                as_dict=False
+            self.embedding_model = OpenAIEmbeddings(
+                api_key=self.config.get_openai_api_key(),
+                model="text-embedding-3-small"
             )
-
-            if results:
-                self._cv_id_cache = str(results[0][0])
-                return self._cv_id_cache
-            else:
-                logger.warning("No CV ID found in database, using default")
-                return "default-cv-id"
+            logger.info("Embedding model initialized successfully")
         except Exception as e:
-            logger.warning(f"Could not fetch CV ID: {e}, using default")
-            return "default-cv-id"
+            logger.error(f"Failed to initialize embedding model: {e}")
+            raise QdrantConnectionError(f"Failed to initialize embedding model: {e}")
+
+        self._cv_id: Optional[str] = None  # Cached CV ID
+        logger.info("DatabaseTools initialized with centralized managers")
+
+    def get_cv_id(self) -> str:
+        """Get CV ID from database (cached after first call)"""
+        if self._cv_id is None:
+            result = self.pg_manager.fetch_one("SELECT id FROM cv_metadata LIMIT 1")
+            if not result:
+                raise CVNotFoundError("No CV data found in database. Please run db_ingestion.py to load data.")
+            self._cv_id = str(result['id'])
+        return self._cv_id
 
     # ========================================================================
     # TOOL 1: Get CV Summary
@@ -122,27 +217,50 @@ class DatabaseTools:
             Dict with CV summary information
         """
         try:
-            results = self.db.execute_query(
-                """
+            result = self.pg_manager.fetch_one("""
                 SELECT name, crole as current_role, total_years_experience,
                        total_jobs, total_degrees, total_publications,
                        domains, all_skills
                 FROM cv_summary
                 LIMIT 1
-                """
-            )
+            """)
 
-            if results:
-                summary_dict = results[0]
+            if result:
                 logger.info("CV summary retrieved successfully")
-                return _format_result("get_cv_summary", "success", summary=summary_dict)
+                return {
+                    "status": "success",
+                    "tool": "get_cv_summary",
+                    "summary": result
+                }
             else:
                 logger.warning("CV not found in database")
-                return _format_result("get_cv_summary", "error", error="CV not found")
+                return {
+                    "status": "error",
+                    "tool": "get_cv_summary",
+                    "error": "CV not found"
+                }
 
+        except PostgreSQLConnectionError as e:
+            logger.error(f"Database connection error in get_cv_summary: {e}")
+            return {
+                "status": "error",
+                "tool": "get_cv_summary",
+                "error": f"Database connection failed: {str(e)}"
+            }
+        except DatabaseQueryError as e:
+            logger.error(f"Query error in get_cv_summary: {e}")
+            return {
+                "status": "error",
+                "tool": "get_cv_summary",
+                "error": f"Query failed: {str(e)}"
+            }
         except Exception as e:
-            logger.error(f"Error in get_cv_summary: {e}")
-            return _format_result("get_cv_summary", "error", error=str(e))
+            logger.error(f"Unexpected error in get_cv_summary: {e}")
+            return {
+                "status": "error",
+                "tool": "get_cv_summary",
+                "error": str(e)
+            }
 
     # ========================================================================
     # TOOL 2: Search Company Experience
@@ -158,33 +276,44 @@ class DatabaseTools:
             Dict with work experience records
         """
         try:
-            cv_id = self._get_cv_id()
-            results = self.db.execute_query(
-                """
+            cv_id = self.get_cv_id()
+            results = self.pg_manager.fetch_all("""
                 SELECT company, role, location, start_date, end_date, is_current,
-                       technologies, skills, domain, seniority, team_size
+                       technologies, skills, domain, seniority, team_size, content
                 FROM work_experience
                 WHERE cv_id = %s AND company ILIKE %s
                 ORDER BY start_date DESC
-                """,
-                (cv_id, f"%{company_name}%")
-            )
+            """, (cv_id, f"%{company_name}%"))
 
             # Convert dates to strings
             for result in results:
-                convert_dates(result, ["start_date", "end_date"])
+                for key in ["start_date", "end_date"]:
+                    if result.get(key):
+                        result[key] = str(result[key])
 
             logger.info(f"Found {len(results)} jobs at {company_name}")
-            return _format_result(
-                "search_company_experience",
-                "success",
-                results=results,
-                company=company_name
-            )
+            return {
+                "status": "success",
+                "tool": "search_company_experience",
+                "company": company_name,
+                "results_count": len(results),
+                "results": results
+            }
 
+        except CVNotFoundError as e:
+            logger.error(f"CV not found in search_company_experience: {e}")
+            return {
+                "status": "error",
+                "tool": "search_company_experience",
+                "error": f"CV not found: {str(e)}"
+            }
         except Exception as e:
             logger.error(f"Error in search_company_experience: {e}")
-            return _format_result("search_company_experience", "error", error=str(e))
+            return {
+                "status": "error",
+                "tool": "search_company_experience",
+                "error": str(e)
+            }
 
     # ========================================================================
     # TOOL 3: Search Technology Experience
@@ -200,32 +329,36 @@ class DatabaseTools:
             Dict with work experience using the technology
         """
         try:
-            cv_id = self._get_cv_id()
-            results = self.db.execute_query(
-                """
+            cv_id = self.get_cv_id()
+            results = self.pg_manager.fetch_all("""
                 SELECT company, role, start_date, end_date, technologies, domain
                 FROM work_experience
                 WHERE cv_id = %s AND %s = ANY(technologies)
                 ORDER BY start_date DESC
-                """,
-                (cv_id, technology)
-            )
+            """, (cv_id, technology))
 
             # Convert dates
             for result in results:
-                convert_dates(result, ["start_date", "end_date"])
+                for key in ["start_date", "end_date"]:
+                    if result.get(key):
+                        result[key] = str(result[key])
 
             logger.info(f"Found {len(results)} jobs using {technology}")
-            return _format_result(
-                "search_technology_experience",
-                "success",
-                results=results,
-                technology=technology
-            )
+            return {
+                "status": "success",
+                "tool": "search_technology_experience",
+                "technology": technology,
+                "results_count": len(results),
+                "results": results
+            }
 
         except Exception as e:
             logger.error(f"Error in search_technology_experience: {e}")
-            return _format_result("search_technology_experience", "error", error=str(e))
+            return {
+                "status": "error",
+                "tool": "search_technology_experience",
+                "error": str(e)
+            }
 
     # ========================================================================
     # TOOL 4: Search Work by Date Range
@@ -242,33 +375,37 @@ class DatabaseTools:
             Dict with work experience in the date range
         """
         try:
-            cv_id = self._get_cv_id()
-            results = self.db.execute_query(
-                """
+            cv_id = self.get_cv_id()
+            results = self.pg_manager.fetch_all("""
                 SELECT company, role, start_date, end_date, technologies, keywords
                 FROM work_experience
                 WHERE cv_id = %s
                   AND start_date >= %s::date
                   AND (end_date <= %s::date OR end_date IS NULL)
                 ORDER BY start_date DESC
-                """,
-                (cv_id, f"{start_year}-01-01", f"{end_year}-12-31")
-            )
+            """, (cv_id, f"{start_year}-01-01", f"{end_year}-12-31"))
 
             for result in results:
-                convert_dates(result, ["start_date", "end_date"])
+                for key in ["start_date", "end_date"]:
+                    if result.get(key):
+                        result[key] = str(result[key])
 
             logger.info(f"Found {len(results)} jobs between {start_year}-{end_year}")
-            return _format_result(
-                "search_work_by_date",
-                "success",
-                results=results,
-                date_range=f"{start_year}-{end_year}"
-            )
+            return {
+                "status": "success",
+                "tool": "search_work_by_date",
+                "date_range": f"{start_year}-{end_year}",
+                "results_count": len(results),
+                "results": results
+            }
 
         except Exception as e:
             logger.error(f"Error in search_work_by_date: {e}")
-            return _format_result("search_work_by_date", "error", error=str(e))
+            return {
+                "status": "error",
+                "tool": "search_work_by_date",
+                "error": str(e)
+            }
 
     # ========================================================================
     # TOOL 5: Search Education
@@ -285,55 +422,52 @@ class DatabaseTools:
             Dict with education records
         """
         try:
-            cv_id = self._get_cv_id()
+            cv_id = self.get_cv_id()
 
             if institution:
-                results = self.db.execute_query(
-                    """
-                    SELECT institution, degree, field, specialization, graduation_date, thesis, publications
+                results = self.pg_manager.fetch_all("""
+                    SELECT institution, degree, field, specialization, graduation_date, thesis, publications, content
                     FROM education
                     WHERE cv_id = %s AND institution ILIKE %s
-                    """,
-                    (cv_id, f"%{institution}%")
-                )
+                """, (cv_id, f"%{institution}%"))
                 search_type = f"institution: {institution}"
 
             elif degree:
-                results = self.db.execute_query(
-                    """
-                    SELECT institution, degree, field, specialization, graduation_date, thesis
+                results = self.pg_manager.fetch_all("""
+                    SELECT institution, degree, field, specialization, graduation_date, thesis, content
                     FROM education
                     WHERE cv_id = %s AND degree ILIKE %s
-                    """,
-                    (cv_id, f"%{degree}%")
-                )
+                """, (cv_id, f"%{degree}%"))
                 search_type = f"degree: {degree}"
 
             else:
-                results = self.db.execute_query(
-                    """
-                    SELECT institution, degree, field, specialization, graduation_date, thesis
+                results = self.pg_manager.fetch_all("""
+                    SELECT institution, degree, field, specialization, graduation_date, thesis, content
                     FROM education
                     WHERE cv_id = %s
-                    """,
-                    (cv_id,)
-                )
+                """, (cv_id,))
                 search_type = "all education"
 
             for result in results:
-                convert_dates(result, ["graduation_date"])
+                if result.get("graduation_date"):
+                    result["graduation_date"] = str(result["graduation_date"])
 
             logger.info(f"Found {len(results)} education records for {search_type}")
-            return _format_result(
-                "search_education",
-                "success",
-                results=results,
-                search_type=search_type
-            )
+            return {
+                "status": "success",
+                "tool": "search_education",
+                "search_type": search_type,
+                "results_count": len(results),
+                "results": results
+            }
 
         except Exception as e:
             logger.error(f"Error in search_education: {e}")
-            return _format_result("search_education", "error", error=str(e))
+            return {
+                "status": "error",
+                "tool": "search_education",
+                "error": str(e)
+            }
 
     # ========================================================================
     # TOOL 6: Search Publications
@@ -349,43 +483,42 @@ class DatabaseTools:
             Dict with publications
         """
         try:
-            cv_id = self._get_cv_id()
+            cv_id = self.get_cv_id()
 
             if year:
-                results = self.db.execute_query(
-                    """
+                results = self.pg_manager.fetch_all("""
                     SELECT title, year, conference_name, doi, keywords, content_text
                     FROM publications
                     WHERE cv_id = %s AND year = %s
                     ORDER BY year DESC
-                    """,
-                    (cv_id, year)
-                )
+                """, (cv_id, year))
                 search_type = f"year: {year}"
 
             else:
-                results = self.db.execute_query(
-                    """
+                results = self.pg_manager.fetch_all("""
                     SELECT title, year, conference_name, doi, keywords, content_text
                     FROM publications
                     WHERE cv_id = %s
                     ORDER BY year DESC
-                    """,
-                    (cv_id,)
-                )
+                """, (cv_id,))
                 search_type = "all publications"
 
             logger.info(f"Found {len(results)} publications for {search_type}")
-            return _format_result(
-                "search_publications",
-                "success",
-                results=results,
-                search_type=search_type
-            )
+            return {
+                "status": "success",
+                "tool": "search_publications",
+                "search_type": search_type,
+                "results_count": len(results),
+                "results": results
+            }
 
         except Exception as e:
             logger.error(f"Error in search_publications: {e}")
-            return _format_result("search_publications", "error", error=str(e))
+            return {
+                "status": "error",
+                "tool": "search_publications",
+                "error": str(e)
+            }
 
     # ========================================================================
     # TOOL 7: Search Skills
@@ -401,28 +534,30 @@ class DatabaseTools:
             Dict with skills in the category
         """
         try:
-            cv_id = self._get_cv_id()
-            results = self.db.execute_query(
-                """
+            cv_id = self.get_cv_id()
+            results = self.pg_manager.fetch_all("""
                 SELECT skill_name
                 FROM skills
                 WHERE cv_id = %s AND skill_category = %s
                 ORDER BY skill_name
-                """,
-                (cv_id, category)
-            )
+            """, (cv_id, category))
 
             logger.info(f"Found {len(results)} skills in category {category}")
-            return _format_result(
-                "search_skills",
-                "success",
-                results=results,
-                category=category
-            )
+            return {
+                "status": "success",
+                "tool": "search_skills",
+                "category": category,
+                "results_count": len(results),
+                "results": results
+            }
 
         except Exception as e:
             logger.error(f"Error in search_skills: {e}")
-            return _format_result("search_skills", "error", error=str(e))
+            return {
+                "status": "error",
+                "tool": "search_skills",
+                "error": str(e)
+            }
 
     # ========================================================================
     # TOOL 8: Search Awards and Certifications
@@ -438,46 +573,46 @@ class DatabaseTools:
             Dict with awards and certifications records
         """
         try:
-            cv_id = self._get_cv_id()
+            cv_id = self.get_cv_id()
 
             if award_type:
-                results = self.db.execute_query(
-                    """
-                    SELECT title, issuing_organization, organization, issue_date, keywords
+                results = self.pg_manager.fetch_all("""
+                    SELECT title, issuing_organization, organization, issue_date, keywords, content
                     FROM awards_certifications
                     WHERE cv_id = %s AND (issuing_organization ILIKE %s OR organization ILIKE %s OR title ILIKE %s)
                     ORDER BY issue_date DESC
-                    """,
-                    (cv_id, f"%{award_type}%", f"%{award_type}%", f"%{award_type}%")
-                )
+                """, (cv_id, f"%{award_type}%", f"%{award_type}%", f"%{award_type}%"))
                 search_type = f"type: {award_type}"
 
             else:
-                results = self.db.execute_query(
-                    """
-                    SELECT title, issuing_organization, organization, issue_date, keywords
+                results = self.pg_manager.fetch_all("""
+                    SELECT title, issuing_organization, organization, issue_date, keywords, content
                     FROM awards_certifications
                     WHERE cv_id = %s
                     ORDER BY issue_date DESC
-                    """,
-                    (cv_id,)
-                )
+                """, (cv_id,))
                 search_type = "all awards and certifications"
 
             for result in results:
-                convert_dates(result, ["issue_date"])
+                if result.get("issue_date"):
+                    result["issue_date"] = str(result["issue_date"])
 
             logger.info(f"Found {len(results)} awards/certifications for {search_type}")
-            return _format_result(
-                "search_awards_certifications",
-                "success",
-                results=results,
-                search_type=search_type
-            )
+            return {
+                "status": "success",
+                "tool": "search_awards_certifications",
+                "search_type": search_type,
+                "results_count": len(results),
+                "results": results
+            }
 
         except Exception as e:
             logger.error(f"Error in search_awards_certifications: {e}")
-            return _format_result("search_awards_certifications", "error", error=str(e))
+            return {
+                "status": "error",
+                "tool": "search_awards_certifications",
+                "error": str(e)
+            }
 
     # ========================================================================
     # TOOL 9: Semantic Search
@@ -496,12 +631,17 @@ class DatabaseTools:
         """
         try:
             query_embedding = self.embedding_model.embed_query(query)
-            collection_name = self.config.get_qdrant_collection()
 
-            # Build filter if section is specified
-            query_filter = None
+            search_params = {
+                "collection_name": self.config.get_qdrant_collection(),
+                "query_vector": query_embedding,
+                "limit": top_k
+            }
+
+            # Add section filter if provided
             if section and section != "all":
-                query_filter = Filter(
+                
+                search_params["query_filter"] = Filter(
                     must=[
                         FieldCondition(
                             key="section",
@@ -510,17 +650,7 @@ class DatabaseTools:
                     ]
                 )
 
-            # Use the Qdrant query_points API (search is deprecated)
-            response = self.qdrant_client.query_points(
-                collection_name=collection_name,
-                query=query_embedding,
-                query_filter=query_filter,
-                limit=top_k,
-                with_payload=True
-            )
-
-            # query_points returns a QueryResponse, extract the points
-            results = response.points
+            results = self.qdrant_manager.client.search(**search_params)
 
             formatted_results = []
             for result in results:
@@ -556,11 +686,15 @@ class DatabaseTools:
                         formatted_result["thesis"] = result.payload.get("thesis")
                     if result.payload.get("graduation_date"):
                         formatted_result["graduation_date"] = result.payload.get("graduation_date")
+                    if result.payload.get("description"):
+                        formatted_result["description"] = result.payload.get("description")
 
                 # Publication specific fields
                 elif section_value == "publication":
                     if result.payload.get("title"):
                         formatted_result["title"] = result.payload.get("title")
+                    if result.payload.get("description"):
+                        formatted_result["description"] = result.payload.get("description")
 
                 # Projects specific fields
                 elif section_value == "projects":
@@ -570,12 +704,17 @@ class DatabaseTools:
                         formatted_result["responsibility"] = result.payload.get("responsibility")
                     if result.payload.get("technologies"):
                         formatted_result["technologies"] = result.payload.get("technologies")
+                    if result.payload.get("description"):
+                        formatted_result["description"] = result.payload.get("description")
 
                 # Common optional fields
                 if result.payload.get("technologies"):
                     formatted_result["technologies"] = result.payload.get("technologies")
                 if result.payload.get("skills"):
                     formatted_result["skills"] = result.payload.get("skills")
+                # Catch-all: surface description for skills, awards, and any other section
+                if result.payload.get("description") and "description" not in formatted_result:
+                    formatted_result["description"] = result.payload.get("description")
 
                 formatted_results.append(formatted_result)
 
@@ -597,6 +736,161 @@ class DatabaseTools:
                 "error": str(e)
             }
 
+    # ========================================================================
+    # TOOL 10: Get All Work Experience (Complete Career History) ⭐ PRIMARY FOR EXPERIENCE QUERIES
+    # ========================================================================
+    def get_all_work_experience(self) -> Dict[str, Any]:
+        """
+        Get complete work experience history - all jobs in chronological order.
+
+        ⭐ PRIMARY TOOL for general "experience" queries!
+        This tool returns the ENTIRE work_experience table for the CV,
+        perfect for questions about:
+        - "Her experience?"
+        - "Work history?" / "Career history?"
+        - "List of jobs?" / "All jobs?"
+        - "Career timeline?" / "Career background?"
+        - "Where did she work?"
+
+        Returns:
+            Dict with all work experience records (complete career history) ordered by date DESC
+
+        Response Format:
+            {
+                "status": "success",
+                "tool": "get_all_work_experience",
+                "results_count": int,
+                "results": [
+                    {
+                        "company": str,
+                        "role": str,
+                        "location": str,
+                        "start_date": str,
+                        "end_date": str,
+                        "is_current": bool,
+                        "technologies": list,
+                        "skills": list,
+                        "domain": str,
+                        "seniority": str,
+                        "team_size": int
+                    },
+                    ...
+                ]
+            }
+        """
+        try:
+            cv_id = self.get_cv_id()
+            results = self.pg_manager.fetch_all("""
+                SELECT company, role, location, start_date, end_date, is_current,
+                       technologies, skills, domain, seniority, team_size, content
+                FROM work_experience
+                WHERE cv_id = %s
+                ORDER BY start_date DESC
+            """, (cv_id,))
+
+            # Convert dates to strings
+            for result in results:
+                for key in ["start_date", "end_date"]:
+                    if result.get(key):
+                        result[key] = str(result[key])
+
+            logger.info(f"Retrieved {len(results)} work experience records")
+            return {
+                "status": "success",
+                "tool": "get_all_work_experience",
+                "results_count": len(results),
+                "results": results
+            }
+
+        except Exception as e:
+            logger.error(f"Error in get_all_work_experience: {e}")
+            return {
+                "status": "error",
+                "tool": "get_all_work_experience",
+                "error": str(e)
+            }
+
+    def search_languages(self, language: Optional[str] = None) -> Dict[str, Any]:
+        """Find languages and their proficiency levels"""
+        try:
+            cv_id = self.get_cv_id()
+            if language:
+                results = self.pg_manager.fetch_all("""
+                    SELECT language, proficiency_level
+                    FROM languages
+                    WHERE cv_id = %s AND language ILIKE %s
+                    ORDER BY language
+                """, (cv_id, f"%{language}%"))
+                search_type = f"language: {language}"
+            else:
+                results = self.pg_manager.fetch_all("""
+                    SELECT language, proficiency_level
+                    FROM languages
+                    WHERE cv_id = %s
+                    ORDER BY language
+                """, (cv_id,))
+                search_type = "all languages"
+            logger.info(f"Found {len(results)} language records for {search_type}")
+            return {"status": "success", "tool": "search_languages",
+                    "search_type": search_type, "results_count": len(results), "results": results}
+        except Exception as e:
+            logger.error(f"Error in search_languages: {e}")
+            return {"status": "error", "tool": "search_languages", "error": str(e)}
+
+    def get_contact_info(self) -> Dict[str, Any]:
+        """Get contact information directly from cv_metadata"""
+        try:
+            cv_id = self.get_cv_id()
+            result = self.pg_manager.fetch_one("""
+                SELECT name, email, email_alt, linkedin, github
+                FROM cv_metadata
+                WHERE id = %s
+            """, (cv_id,))
+            if result:
+                logger.info("Contact information retrieved successfully")
+                return {"status": "success", "tool": "get_contact_info", "data": dict(result)}
+            else:
+                return {"status": "error", "tool": "get_contact_info",
+                        "error": "Contact information not found"}
+        except Exception as e:
+            logger.error(f"Error in get_contact_info: {e}")
+            return {"status": "error", "tool": "get_contact_info", "error": str(e)}
+
+    def search_work_references(self, reference_name: Optional[str] = None, company: Optional[str] = None) -> Dict[str, Any]:
+        """Find professional work references by name or company"""
+        try:
+            cv_id = self.get_cv_id()
+            if reference_name:
+                results = self.pg_manager.fetch_all("""
+                    SELECT name, position, company, email, note
+                    FROM work_references
+                    WHERE cv_id = %s AND name ILIKE %s
+                    ORDER BY name
+                """, (cv_id, f"%{reference_name}%"))
+                search_type = f"name: {reference_name}"
+            elif company:
+                results = self.pg_manager.fetch_all("""
+                    SELECT name, position, company, email, note
+                    FROM work_references
+                    WHERE cv_id = %s AND company ILIKE %s
+                    ORDER BY name
+                """, (cv_id, f"%{company}%"))
+                search_type = f"company: {company}"
+            else:
+                results = self.pg_manager.fetch_all("""
+                    SELECT name, position, company, email, note
+                    FROM work_references
+                    WHERE cv_id = %s
+                    ORDER BY name
+                """, (cv_id,))
+                search_type = "all references"
+            logger.info(f"Found {len(results)} work reference records for {search_type}")
+            return {"status": "success", "tool": "search_work_references",
+                    "search_type": search_type, "results_count": len(results), "results": results}
+        except Exception as e:
+            logger.error(f"Error in search_work_references: {e}")
+            return {"status": "error", "tool": "search_work_references", "error": str(e)}
+
 
 # ============================================================================
 # MCP SERVER SETUP
@@ -609,22 +903,15 @@ def create_mcp_server():
         tools = DatabaseTools(config)
         logger.info("MCP Server initialized successfully")
         return tools
+    except MCPServerError as e:
+        logger.error(f"MCP Server initialization error: {e}")
+        raise
     except Exception as e:
         logger.error(f"Failed to initialize MCP Server: {e}")
-        raise
+        raise MCPServerError(f"MCP Server initialization failed: {str(e)}")
 
 
 if __name__ == "__main__":
     logger.info("MCP Server started")
-    try:
-        mcp_server = create_mcp_server()
-        logger.info("All tools available and ready")
-
-        # Simple test: get CV summary
-        result = mcp_server.get_cv_summary()
-        if result["status"] == "success":
-            print("✓ MCP Server is working correctly")
-        else:
-            print(f"✗ MCP Server error: {result.get('error')}")
-    except Exception as e:
-        print(f"✗ MCP Server initialization failed: {e}")
+    mcp_server = create_mcp_server()
+    logger.info("All tools available and ready")

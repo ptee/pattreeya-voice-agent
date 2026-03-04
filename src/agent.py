@@ -17,8 +17,8 @@ from livekit.agents import (
     RunContext,
 )
 from livekit.plugins import (
-    noise_cancellation, 
-    silero, 
+    noise_cancellation,
+    silero,
 )
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
@@ -124,6 +124,25 @@ class Assistant(Agent):
                 return f"Error: {result.get('error')}"
         except Exception as e:
             logger.error(f"Error in search_company_experience: {e}")
+            return f"Error: {str(e)}"
+
+    @function_tool
+    async def search_work_by_date(self, _: RunContext, start_year: int, end_year: int) -> str:
+        """Find work experience within a date range."""
+        try:
+            result = await asyncio.to_thread(
+                self._mcp_client.search_work_by_date, start_year, end_year
+            )
+            if result['status'] == 'success':
+                results = result.get('results', [])
+                if results:
+                    return f"Found {len(results)} job(s) between {start_year}-{end_year}: {results}"
+                else:
+                    return f"No work experience found between {start_year} and {end_year}"
+            else:
+                return f"Error: {result.get('error')}"
+        except Exception as e:
+            logger.error(f"Error in search_work_by_date: {e}")
             return f"Error: {str(e)}"
 
     @function_tool
@@ -239,6 +258,68 @@ class Assistant(Agent):
                 return f"Error: {result.get('error')}"
         except Exception as e:
             logger.error(f"Error in semantic_search: {e}")
+            return f"Error: {str(e)}"
+
+    @function_tool
+    async def get_all_work_experience(self, _: RunContext) -> str:
+        """Get complete work experience history - all jobs in chronological order. Use this for general experience, career history, or all jobs queries."""
+        try:
+            result = await asyncio.to_thread(self._mcp_client.get_all_work_experience)
+            if result['status'] == 'success':
+                results = result.get('results', [])
+                if results:
+                    return f"Found {len(results)} work experience record(s): {results}"
+                else:
+                    return "No work experience records found"
+            else:
+                return f"Error: {result.get('error')}"
+        except Exception as e:
+            logger.error(f"Error in get_all_work_experience: {e}")
+            return f"Error: {str(e)}"
+
+    @function_tool
+    async def search_languages(self, _: RunContext, language: Optional[str] = None) -> str:
+        """Find languages spoken and proficiency levels."""
+        try:
+            result = await asyncio.to_thread(self._mcp_client.search_languages, language)
+            if result['status'] == 'success':
+                results = result.get('results', [])
+                if results:
+                    return f"Found {len(results)} language(s): {results}"
+                return "No language records found"
+            return f"Error: {result.get('error')}"
+        except Exception as e:
+            logger.error(f"Error in search_languages: {e}")
+            return f"Error: {str(e)}"
+
+    @function_tool
+    async def get_contact_info(self, _: RunContext) -> str:
+        """Get contact information: email, LinkedIn, and GitHub."""
+        try:
+            result = await asyncio.to_thread(self._mcp_client.get_contact_info)
+            if result['status'] == 'success':
+                data = result.get('data', {})
+                return f"Contact info: {data}"
+            return f"Error: {result.get('error')}"
+        except Exception as e:
+            logger.error(f"Error in get_contact_info: {e}")
+            return f"Error: {str(e)}"
+
+    @function_tool
+    async def search_work_references(self, _: RunContext, reference_name: Optional[str] = None, company: Optional[str] = None) -> str:
+        """Find professional work references by name or company."""
+        try:
+            result = await asyncio.to_thread(
+                self._mcp_client.search_work_references, reference_name, company
+            )
+            if result['status'] == 'success':
+                results = result.get('results', [])
+                if results:
+                    return f"Found {len(results)} reference(s): {results}"
+                return "No work references found"
+            return f"Error: {result.get('error')}"
+        except Exception as e:
+            logger.error(f"Error in search_work_references: {e}")
             return f"Error: {str(e)}"
 
     # =========================================================================

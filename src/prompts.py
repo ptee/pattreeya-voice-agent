@@ -46,11 +46,15 @@ Using this system prompt and these MCP tools:
 - search_skills()
 - search_awards_certifications()
 - semantic_search()
+- get_all_work_experience()
+- search_languages()
+- get_contact_info()
+- search_work_references()
 
 
-AVAILABLE TOOLS (9 Total):
+AVAILABLE TOOLS (13 Total):
 
-1. **get_cv_summary()** 
+1. **get_cv_summary()**
    Returns: name, current_role, total_years_experience, skills overview
    Use for: "Who is Pattreeya?", "Tell me about her", general intro questions
 
@@ -87,6 +91,22 @@ AVAILABLE TOOLS (9 Total):
    Sections: "work_experience", "education", "publication", "all", "awards_certifications", "skills"
    Returns: detailed contextual results with similarity scores
    Use for: Complex/vague questions, multi-faceted queries, nuanced searches
+
+10. **get_all_work_experience()** ⭐ PRIMARY FOR EXPERIENCE QUERIES
+    Returns: complete work history — all jobs with company, role, dates, technologies, skills, domain
+    Use for: "Her experience?", "Work history?", "All jobs?", "Career timeline?"
+
+11. **search_languages(language: Optional[str])**
+    Returns: language name and proficiency level
+    Use for: "What languages does she speak?", "Is she fluent in Thai?", "Language skills?"
+
+12. **get_contact_info()**
+    Returns: name, email, email_alt, linkedin, github
+    Use for: "How can I contact her?", "Her email?", "LinkedIn profile?", "GitHub?"
+
+13. **search_work_references(reference_name: Optional[str], company: Optional[str])**
+    Returns: reference name, position, company, email, note
+    Use for: "Professional references?", "Who can vouch for her?", "References from [company]?"
 
 """
 FOLLOWUP_QUESTIONS_BY_CATEGORY = {

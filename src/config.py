@@ -10,6 +10,33 @@ from dotenv import load_dotenv
 # Load environment variables from .env files
 load_dotenv()
 
+from exceptions import (
+    ConfigurationError,
+    ConfigurationMissingError,
+    ConfigurationInvalidError,
+    StreamlitSecretsError,
+    EnvVarError,
+    PostgreSQLConnectionError,
+    InvalidUUIDError,
+    CVNotFoundError
+)
+
+#logger = logging.getLogger(__name__)
+#logger.setLevel(getattr(logging, "WARNING"))
+
+# Valid logging levels
+# VALID_LOG_LEVELS = {
+#     "debug": logging.DEBUG,
+#     "info": logging.INFO,
+#     "warning": logging.WARNING,
+#     "error": logging.ERROR,
+#     "critical": logging.CRITICAL,
+# }
+
+
+# ============================================================================
+# CONFIGURATION MANAGER CLASS
+# ============================================================================
 
 class ConfigManager:
     """Centralized configuration management for the voice agent"""

@@ -1,59 +1,100 @@
 """
 MCP Client for CV Database Access
-Direct wrapper for DatabaseTools from MCP Server
+Wrapper for MCP Server tools to be used by LLM agents
+
+Refactored to use:
+- ConfigManager (config.py) for unified configuration
+- DatabaseTools (mcp_server.py) for database operations
+- Custom exceptions (exceptions.py) for better error handling
 """
 
 import logging
 from typing import Dict, List, Any, Optional
 
-from config import get_config
+from config import get_config, ConfigManager
 from mcp_server import DatabaseTools
+from exceptions import MCPServerError
 
 logger = logging.getLogger(__name__)
-
+# Logging level will be configured by config.configure_logging() at application startup
 
 class MCPClient:
-    """Client for accessing MCP database tools via DatabaseTools"""
+    """Client for accessing MCP database tools"""
 
-    def __init__(self, config=None):
-        """Initialize MCP client with DatabaseTools"""
+    def __init__(self, config: Optional[ConfigManager] = None):
+        """
+        Initialize MCP client.
+
+        Args:
+            config: ConfigManager instance (optional, defaults to get_config())
+
+        Raises:
+            MCPServerError: If initialization fails
+        """
         try:
             self.config = config or get_config()
             self.tools = DatabaseTools(self.config)
-            logger.info("MCP Client initialized successfully")
+
+            # Initialize CV ID at startup (fetches it once and caches it)
+            # This ensures we fail early if database is not configured properly
+            self.cv_id = self.tools.get_cv_id()
+            logger.info(f"MCP Client initialized successfully with CV ID: {self.cv_id[:8]}...")
         except Exception as e:
             logger.error(f"Failed to initialize MCP Client: {e}")
-            raise
+            raise MCPServerError(f"MCP Client initialization failed: {str(e)}")
 
-    # Direct pass-through methods to DatabaseTools
+    # ========================================================================
+    # Tool 1: Get CV Summary
+    # ========================================================================
     def get_cv_summary(self) -> Dict[str, Any]:
         """Get a summary of the CV including role, experience, and key stats"""
         return self.tools.get_cv_summary()
 
+    # ========================================================================
+    # Tool 2: Search Company Experience
+    # ========================================================================
     def search_company_experience(self, company_name: str) -> Dict[str, Any]:
         """Find all jobs at a specific company"""
         return self.tools.search_company_experience(company_name)
 
+    # ========================================================================
+    # Tool 3: Search Technology Experience
+    # ========================================================================
     def search_technology_experience(self, technology: str) -> Dict[str, Any]:
         """Find all jobs using a specific technology"""
         return self.tools.search_technology_experience(technology)
 
+    # ========================================================================
+    # Tool 4: Search Work by Date
+    # ========================================================================
     def search_work_by_date(self, start_year: int, end_year: int) -> Dict[str, Any]:
         """Find work experience within a date range"""
         return self.tools.search_work_by_date(start_year, end_year)
 
+    # ========================================================================
+    # Tool 5: Search Education
+    # ========================================================================
     def search_education(self, institution: Optional[str] = None, degree: Optional[str] = None) -> Dict[str, Any]:
         """Find education records by institution or degree"""
         return self.tools.search_education(institution, degree)
 
+    # ========================================================================
+    # Tool 6: Search Publications
+    # ========================================================================
     def search_publications(self, year: Optional[int] = None) -> Dict[str, Any]:
         """Search publications by year or get all publications"""
         return self.tools.search_publications(year)
 
+    # ========================================================================
+    # Tool 7: Search Skills
+    # ========================================================================
     def search_skills(self, category: str) -> Dict[str, Any]:
         """Find skills by category"""
         return self.tools.search_skills(category)
 
+    # ========================================================================
+    # Tool 8: Search Awards and Certifications
+    # ========================================================================
     def search_awards_certifications(self, award_type: Optional[str] = None) -> Dict[str, Any]:
         """Find awards and certifications records"""
         return self.tools.search_awards_certifications(award_type)
@@ -64,6 +105,48 @@ class MCPClient:
     def semantic_search(self, query: str, section: Optional[str] = None, top_k: int = 5) -> Dict[str, Any]:
         """Perform semantic search on CV content using vector embeddings"""
         return self.tools.semantic_search(query, section, top_k)
+
+    # ========================================================================
+    # Tool 10: Get All Work Experience ⭐ PRIMARY FOR EXPERIENCE QUERIES
+    # ========================================================================
+    def get_all_work_experience(self) -> Dict[str, Any]:
+        """
+        Get complete work experience history - all jobs in chronological order.
+
+        ⭐ PRIMARY TOOL for general "experience" queries!
+        Returns ENTIRE work history at once, perfect for:
+        - "Her experience?"
+        - "Work history?" or "Career history?"
+        - "All jobs?" or "List of experience?"
+        - "Career timeline?" or "Work background?"
+
+        Returns:
+            Dict with all work records including company, role, location, dates,
+            technologies, skills, domain, seniority, team size, and content
+            (full descriptive text of responsibilities and achievements)
+        """
+        return self.tools.get_all_work_experience()
+
+    # ========================================================================
+    # Tool 11: Search Languages
+    # ========================================================================
+    def search_languages(self, language: Optional[str] = None) -> Dict[str, Any]:
+        """Find languages and their proficiency levels"""
+        return self.tools.search_languages(language)
+
+    # ========================================================================
+    # Tool 12: Get Contact Info
+    # ========================================================================
+    def get_contact_info(self) -> Dict[str, Any]:
+        """Get contact information directly from cv_metadata"""
+        return self.tools.get_contact_info()
+
+    # ========================================================================
+    # Tool 13: Search Work References
+    # ========================================================================
+    def search_work_references(self, reference_name: Optional[str] = None, company: Optional[str] = None) -> Dict[str, Any]:
+        """Find professional work references by name or company"""
+        return self.tools.search_work_references(reference_name, company)
 
     # ========================================================================
     # Tool Registry
@@ -135,6 +218,31 @@ class MCPClient:
                     "section": {"type": "string", "description": "Filter by section (optional)"},
                     "top_k": {"type": "integer", "description": "Number of results (default: 5)"}
                 }
+            },
+            {
+                "name": "get_all_work_experience",
+                "description": "⭐ PRIMARY TOOL: Get COMPLETE work experience history in chronological order - ALL jobs at once. MUST USE for any 'experience', 'work history', 'career history', 'jobs', 'career timeline', 'work background' questions. Returns all work records with company, role, dates, technologies, skills, domain, seniority, team size, and content (full responsibility/achievement description).",
+                "parameters": {}
+            },
+            {
+                "name": "search_languages",
+                "description": "Find languages spoken and their proficiency levels",
+                "parameters": {
+                    "language": {"type": "string", "description": "Language name to search (optional)"}
+                }
+            },
+            {
+                "name": "get_contact_info",
+                "description": "Get contact information: name, email, LinkedIn, and GitHub",
+                "parameters": {}
+            },
+            {
+                "name": "search_work_references",
+                "description": "Find professional work references by name or company",
+                "parameters": {
+                    "reference_name": {"type": "string", "description": "Reference person's name (optional)"},
+                    "company": {"type": "string", "description": "Company name (optional)"}
+                }
             }
         ]
 
@@ -177,6 +285,21 @@ class MCPClient:
                 top_k=kwargs.get("top_k", 5)
             )
 
+        elif tool_name == "get_all_work_experience":
+            return self.get_all_work_experience()
+
+        elif tool_name == "search_languages":
+            return self.search_languages(language=kwargs.get("language"))
+
+        elif tool_name == "get_contact_info":
+            return self.get_contact_info()
+
+        elif tool_name == "search_work_references":
+            return self.search_work_references(
+                reference_name=kwargs.get("reference_name"),
+                company=kwargs.get("company")
+            )
+
         else:
             return {
                 "status": "error",
@@ -198,19 +321,10 @@ def get_mcp_client() -> MCPClient:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    # Test the client
+    client = get_mcp_client()
+    print(f"Available tools: {len(client.get_available_tools())}")
 
-    try:
-        # Test the client
-        client = get_mcp_client()
-        print(f"✓ MCP Client initialized successfully")
-        print(f"  Available tools: {len(client.get_available_tools())}")
-
-        # Test a simple tool
-        result = client.get_cv_summary()
-        if result['status'] == 'success':
-            print(f"✓ CV Summary retrieved successfully")
-        else:
-            print(f"✗ Error: {result.get('error')}")
-    except Exception as e:
-        print(f"✗ MCP Client error: {e}")
+    # Test a simple tool
+    result = client.get_cv_summary()
+    print(f"CV Summary: {result['status']}")

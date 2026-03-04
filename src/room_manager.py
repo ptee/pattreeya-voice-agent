@@ -17,18 +17,29 @@ class RoomManager:
     """Manages LiveKit rooms for the voice agent"""
 
     def __init__(self, config=None):
-        """Initialize room manager with LiveKit credentials"""
+        """Initialize room manager — credentials only, API created lazily on first async call"""
         self.config = config or get_config()
-        try:
-            self.api = LiveKitAPI(
-                url=self.config.get_livekit_url(),
-                api_key=self.config.get_livekit_api_key(),
-                api_secret=self.config.get_livekit_api_secret(),
+        self._api: Optional[LiveKitAPI] = None
+        self._livekit_url = self.config.get_livekit_url()
+        self._api_key = self.config.get_livekit_api_key()
+        self._api_secret = self.config.get_livekit_api_secret()
+        logger.info("RoomManager initialized successfully")
+
+    async def _get_api(self) -> LiveKitAPI:
+        """Lazily create LiveKitAPI on first async call (requires running event loop)"""
+        if self._api is None:
+            self._api = LiveKitAPI(
+                url=self._livekit_url,
+                api_key=self._api_key,
+                api_secret=self._api_secret,
             )
-            logger.info("RoomManager initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize RoomManager: {e}")
-            raise
+        return self._api
+
+    async def aclose(self) -> None:
+        """Close the underlying API session"""
+        if self._api is not None:
+            await self._api.aclose()
+            self._api = None
 
     async def create_pattreeya_room(
         self,
@@ -60,7 +71,8 @@ class RoomManager:
             # Create the room via API
             from livekit.api.room_service import CreateRoomRequest
 
-            await self.api.room.create_room(
+            api = await self._get_api()
+            await api.room.create_room(
                 req=CreateRoomRequest(
                     room=room_name,
                     max_participants=max_participants,
@@ -96,7 +108,8 @@ class RoomManager:
 
             from livekit.api.room_service import DeleteRoomRequest
 
-            await self.api.room.delete_room(req=DeleteRoomRequest(room=room_name))
+            api = await self._get_api()
+            await api.room.delete_room(req=DeleteRoomRequest(room=room_name))
             logger.info(f"Deleted room '{room_name}'")
             return True
 
@@ -114,7 +127,8 @@ class RoomManager:
         try:
             from livekit.api.room_service import ListRoomsRequest
 
-            response = await self.api.room.list_rooms(req=ListRoomsRequest())
+            api = await self._get_api()
+            response = await api.room.list_rooms(req=ListRoomsRequest())
             pattreeya_rooms = [
                 room.name
                 for room in response.rooms
@@ -140,7 +154,8 @@ class RoomManager:
         try:
             from livekit.api.room_service import ListRoomsRequest
 
-            response = await self.api.room.list_rooms(req=ListRoomsRequest())
+            api = await self._get_api()
+            response = await api.room.list_rooms(req=ListRoomsRequest())
             return any(room.name == room_name for room in response.rooms)
 
         except Exception as e:
