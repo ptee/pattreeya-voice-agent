@@ -1,0 +1,38 @@
+{
+  "name": "ptee-voice-agent",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --import tsx/esm src/index.ts dev",
+    "start": "node --import tsx/esm src/index.ts start",
+    "build": "tsc",
+    "start:prod": "node dist/index.js start",
+    "download-files": "node --import tsx/esm src/index.ts download-files"
+  },
+  "dependencies": {
+    "@livekit/agents": "^1.0.0",
+    "@livekit/agents-plugin-cartesia": "^1.0.0",
+    "@livekit/agents-plugin-deepgram": "^1.0.0",
+    "@livekit/agents-plugin-livekit": "^1.0.0",
+    "@livekit/agents-plugin-openai": "^1.0.0",
+    "@livekit/agents-plugin-silero": "^1.0.0",
+    "@livekit/rtc-node-linux-x64-musl": "^0.13.24",
+    "@qdrant/js-client-rest": "^1.9.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.0",
+    "jose": "^5.9.0",
+    "livekit-server-sdk": "^2.15.0",
+    "openai": "^4.67.0",
+    "pg": "^8.12.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.6",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

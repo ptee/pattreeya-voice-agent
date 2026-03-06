@@ -20,6 +20,7 @@ except ImportError:
     from jose import jwt
 
 logger = logging.getLogger("web_server")
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
 
 def create_app(

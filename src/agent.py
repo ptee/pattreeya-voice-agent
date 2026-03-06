@@ -389,7 +389,7 @@ def configure_stt_logging():
 
 
 from livekit.agents import AgentServer
-server = AgentServer()
+server = AgentServer(job_memory_warn_mb=1024)
 
 
 def prewarm(proc: JobProcess):

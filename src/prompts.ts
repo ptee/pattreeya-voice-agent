@@ -1,4 +1,4 @@
-SYSTEM_PROMPT = """You are Pattreeya's professional voice assistant. Answer ONLY questions about her career, education, skills, and achievements.
+export const SYSTEM_PROMPT = `You are Pattreeya's professional voice assistant. Answer ONLY questions about her career, education, skills, and achievements.
 
 CRITICAL RULES:
 1. START THE CONVERSATION with a greeting as soon as a call begins.
@@ -195,86 +195,56 @@ RESPONSE QUALITY RULES
 - For general/overview questions → start with get_cv_summary(), then semantic_search()
 - If tool returns no results → immediately try semantic_search() as fallback
 - Never say "no information found" without first trying semantic_search()
-"""
+`;
 
-FOLLOWUP_QUESTIONS_BY_CATEGORY = {
-    "General Overview": [
-        "What are her primary areas of expertise and specialization?",
-        "Can you describe her career progression over the years?",
-        "What companies has she worked at during her career?",
-        "What are her educational credentials and academic background?",
-        "What makes her particularly skilled in machine learning and AI?",
-    ],
-    "Work Experience": [
-        "What technologies and tools did she use in her most recent role?",
-        "How did her responsibilities evolve as she progressed in her career?",
-        "What were some of her key accomplishments in previous roles?",
-        "Has she held leadership or management positions? What teams did she manage?",
-        "What industries and domains has she worked in throughout her career?",
-    ],
-    "Technical Skills": [
-        "What is her background in machine learning and deep learning?",
-        "Does she have experience with cloud platforms like AWS or Azure?",
-        "What data tools and frameworks is she proficient with?",
-        "Has she worked with any specialized AI or ML libraries and frameworks?",
-        "What programming languages has she mastered throughout her career?",
-    ],
-    "Education": [
-        "What was the focus or topic of her PhD research and thesis?",
-        "Where did she pursue her advanced degrees and what fields did she study?",
-        "How has her academic background influenced her professional career?",
-        "Did her research work lead to any publications or patents?",
-        "What specializations or areas did she focus on during her studies?",
-    ],
-    "Publications": [
-        "What are the main themes or topics of her published research?",
-        "Has she been published in prestigious conferences or journals?",
-        "Do her publications focus on any particular area of machine learning?",
-        "How frequently has she published research work in recent years?",
-        "What impact or recognition have her publications received in the field?",
-    ],
-    "Awards & Certifications": [
-        "What certifications or credentials has she earned throughout her career?",
-        "Has she received recognition for her work in machine learning or AI?",
-        "What notable achievements or honors stand out in her professional journey?",
-        "Are there any prestigious awards she has won for her contributions?",
-        "What professional recognitions demonstrate her expertise and impact?",
-    ],
-    "Comprehensive": [
-        "How does her experience span across different technical and professional domains?",
-        "What is the connection between her research work and industry applications?",
-        "How has she contributed to the advancement of machine learning as a field?",
-        "What broader skills beyond technical expertise does she bring to her roles?",
-        "How do her education, research, and industry experience complement each other?",
-    ],
-}
-
-CATEGORY_CLASSIFIER_PROMPT = """You are a category classifier for CV-related questions about Pattreeya.
-
-Classify the user's question into ONE primary category. Be precise - if a question mentions multiple topics, choose the PRIMARY intent.
-
-Available categories:
-1. **General Overview** - Who is Pattreeya? Summary of her background, professional introduction
-2. **Work Experience** - Specific roles, companies (KasiOss, AgBrain), job titles, responsibilities, career trajectory
-3. **Technical Skills** - Programming languages, frameworks (Python, TensorFlow, PyTorch), technologies, AI/ML expertise level
-4. **Education** - Degrees (BSc, MSc, PhD), universities, institutions, thesis, coursework
-5. **Publications** - Papers published, research work, articles written, research contributions
-6. **Awards & Certifications** - Awards, honors, certifications received, recognition, achievements
-7. **Comprehensive** - Deep learning frameworks, language abilities, broader skill overview, spanning multiple areas
-
-CLASSIFICATION RULES:
-- "Who is she?" or "Tell me about her" without specific domain → **General Overview**
-- "Where is she working?", "What is her current role?", "What does she do now?" → **Work Experience** (CURRENT position focus)
-- "What did she do at [company]?" or "Her roles?" or "Where did she work?" → **Work Experience** (career history)
-- "Does she know [technology]?" or "Her ML expertise?" → **Technical Skills**
-- "Where did she study?" or "Her degree?" → **Education**
-- "What did she publish?" or "Her research?" → **Publications**
-- "What awards?" or "Her certifications?" or "Recognition?" → **Awards & Certifications**
-- "Tell me about X in detail" spanning multiple areas → **Comprehensive**
-
-TENSE HINTS:
-- Present tense ("is", "working", "currently") → CURRENT work → Work Experience
-- Past tense ("did", "was", "worked") → career history → Work Experience
-
-Return ONLY the category name (e.g., "Work Experience"), nothing else.
-"""
+export const FOLLOWUP_QUESTIONS_BY_CATEGORY: Record<string, string[]> = {
+  'General Overview': [
+    'What are her primary areas of expertise and specialization?',
+    'Can you describe her career progression over the years?',
+    'What companies has she worked at during her career?',
+    'What are her educational credentials and academic background?',
+    'What makes her particularly skilled in machine learning and AI?',
+  ],
+  'Work Experience': [
+    'What technologies and tools did she use in her most recent role?',
+    'How did her responsibilities evolve as she progressed in her career?',
+    'What were some of her key accomplishments in previous roles?',
+    'Has she held leadership or management positions? What teams did she manage?',
+    'What industries and domains has she worked in throughout her career?',
+  ],
+  'Technical Skills': [
+    'What is her background in machine learning and deep learning?',
+    'Does she have experience with cloud platforms like AWS or Azure?',
+    'What data tools and frameworks is she proficient with?',
+    'Has she worked with any specialized AI or ML libraries and frameworks?',
+    'What programming languages has she mastered throughout her career?',
+  ],
+  'Education': [
+    'What was the focus or topic of her PhD research and thesis?',
+    'Where did she pursue her advanced degrees and what fields did she study?',
+    'How has her academic background influenced her professional career?',
+    'Did her research work lead to any publications or patents?',
+    'What specializations or areas did she focus on during her studies?',
+  ],
+  'Publications': [
+    'What are the main themes or topics of her published research?',
+    'Has she been published in prestigious conferences or journals?',
+    'Do her publications focus on any particular area of machine learning?',
+    'How frequently has she published research work in recent years?',
+    'What impact or recognition have her publications received in the field?',
+  ],
+  'Awards & Certifications': [
+    'What certifications or credentials has she earned throughout her career?',
+    'Has she received recognition for her work in machine learning or AI?',
+    'What notable achievements or honors stand out in her professional journey?',
+    'Are there any prestigious awards she has won for her contributions?',
+    'What professional recognitions demonstrate her expertise and impact?',
+  ],
+  'Comprehensive': [
+    'How does her experience span across different technical and professional domains?',
+    'What is the connection between her research work and industry applications?',
+    'How has she contributed to the advancement of machine learning as a field?',
+    'What broader skills beyond technical expertise does she bring to her roles?',
+    'How do her education, research, and industry experience complement each other?',
+  ],
+};

@@ -44,11 +44,12 @@ RUN addgroup -g 1001 -S nodejs && \
 
 USER nextjs
 
-# Expose port 3000
-EXPOSE 3000
+# Expose port 3002 (matches package.json "start": "next start -p 3002")
+EXPOSE 3002
 
 # Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3002/ || exit 1
 
-# Start the Next.js application
-#CMD ["pnpm", "start"]
-CMD ["node_modules/.bin/next", "start"]
+# Start the Next.js application on port 3002
+CMD ["node_modules/.bin/next", "start", "-p", "3002"]
