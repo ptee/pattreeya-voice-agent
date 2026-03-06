@@ -1,0 +1,85 @@
+services:
+  # ──────────────────────────────────────────────
+  # Node.js backend: LiveKit agent + Express API
+  # ──────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ptee-voice-agent-backend:latest
+    container_name: ptee-backend
+    restart: unless-stopped
+    ports:
+      - "8019:8019"   # Flask /api/connection-details
+    environment:
+      # LiveKit
+      LIVEKIT_URL: ${LIVEKIT_URL}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      # OpenAI
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-nano}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      # Databases
+      POSTGRESQL_URL: ${POSTGRESQL_URL}
+      QDRANT_URL: ${QDRANT_URL}
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      QDRANT_VECTOR_COLLECTION: ${QDRANT_VECTOR_COLLECTION:-pt_cv}
+      # Speech / avatar APIs
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      TAVUS_API_KEY: ${TAVUS_API_KEY:-}
+      SIMLI_API_KEY: ${SIMLI_API_KEY:-}
+      SIMLI_FACE_ID: ${SIMLI_FACE_ID:-}
+      BEY_API_KEY: ${BEY_API_KEY:-}
+      BITHUMAN_API_SECRET: ${BITHUMAN_API_SECRET:-}
+      # Agent config
+      AVATAR_PROVIDER: ${AVATAR_PROVIDER:-none}
+      profile_pic: ${profile_pic:-}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8019/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s   # model files are pre-downloaded at image build time
+      retries: 3
+    networks:
+      - ptee-net
+
+  # ──────────────────────────────────────────────
+  # Next.js frontend
+  # ──────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    image: ptee-voice-agent-frontend:latest
+    container_name: ptee-frontend
+    restart: unless-stopped
+    ports:
+      - "3003:3002"   # Next.js production server (host 3003 → container 3002)
+    environment:
+      NODE_ENV: production
+      # Server-side vars used by app/api/connection-details/route.ts to sign JWTs
+      LIVEKIT_URL: ${LIVEKIT_URL}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      # LiveKit WebSocket URL for the browser (NEXT_PUBLIC_ vars are baked at
+      # build time — changing them here only helps if you rebuild the image)
+      NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-${LIVEKIT_URL}}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    networks:
+      - ptee-net
+
+networks:
+  ptee-net:
+    driver: bridge
