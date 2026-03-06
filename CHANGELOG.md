@@ -17,3 +17,14 @@ All notable changes to this project will be documented in this file.
 ### Backward Fix
 - The code break in between .. we retrieve it back. 
 - This version should be version v1.x, backend + frontend work together on firefox.
+
+## [v3.0] 
+### Use JS/TS for backend
+- Use JS/TS for backend
+- Use Next.js for frontend
+- Use docker for containerization for both backend and frontend
+- Use docker-compose for orchestration
+- Use docker volume for persistent storage
+- Use docker network for communication between backend and frontend
+- ** This version should make the agent run faster and more stable **
+- Problem from previous version: We use Python for backend, it is slow and unstable for room connection, so we switch to JS/TS for backend. (Experimental)
