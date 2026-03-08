@@ -38,24 +38,24 @@ export default defineAgent({
     // ── Room-level event hooks ─────────────────────────────────────────────
     ctx.room.on('reconnecting', () => console.warn('[ROOM] Reconnecting to LiveKit...'));
     ctx.room.on('reconnected', () => console.info('[ROOM] Reconnected successfully'));
-    ctx.room.on('connectionStateChanged', (state: string) =>
+    ctx.room.on('connectionStateChanged', (state) =>
       console.info(`[ROOM] connectionStateChanged: ${state}`),
     );
-    ctx.room.on('participantConnected', (p: { identity: string; kind: number }) =>
+    ctx.room.on('participantConnected', (p) =>
       console.info(`[ROOM] participantConnected: identity=${p.identity}, kind=${p.kind}`),
     );
-    ctx.room.on('participantDisconnected', (p: { identity: string }) =>
+    ctx.room.on('participantDisconnected', (p) =>
       console.info(`[ROOM] participantDisconnected: identity=${p.identity}`),
     );
     ctx.room.on(
       'trackSubscribed',
-      (track: { kind: string; sid: string }, _pub: unknown, p: { identity: string }) =>
+      (track, _pub, p) =>
         console.info(`[ROOM] trackSubscribed: kind=${track.kind}, sid=${track.sid}, from=${p.identity}`),
     );
-    ctx.room.on('trackUnsubscribed', (track: { kind: string }, _pub: unknown, p: { identity: string }) =>
+    ctx.room.on('trackUnsubscribed', (track, _pub, p) =>
       console.info(`[ROOM] trackUnsubscribed: kind=${track.kind}, from=${p.identity}`),
     );
-    ctx.room.on('activeSpeakersChanged', (speakers: Array<{ identity: string }>) =>
+    ctx.room.on('activeSpeakersChanged', (speakers) =>
       console.info(
         `[ROOM] activeSpeakersChanged: [${speakers.map((s) => s.identity).join(', ') || 'none'}]`,
       ),
@@ -93,38 +93,32 @@ export default defineAgent({
     });
 
     // ── Session-level event hooks (must be registered before session.start()) ─
-    session.on('agent_state_changed', (e: { oldState: string; newState: string }) =>
+    const S = voice.AgentSessionEventTypes;
+    session.on(S.AgentStateChanged, (e) =>
       console.info(`[SESSION] agentState: ${e.oldState} → ${e.newState}`),
     );
-    session.on('user_state_changed', (e: { oldState: string; newState: string }) =>
+    session.on(S.UserStateChanged, (e) =>
       console.info(`[SESSION] userState: ${e.oldState} → ${e.newState}`),
     );
-    session.on(
-      'user_input_transcribed',
-      (e: { transcript: string; isFinal: boolean; language: string | null }) =>
-        console.info(
-          `[SESSION] userTranscript [final=${e.isFinal}, lang=${e.language ?? 'unknown'}]: "${e.transcript}"`,
-        ),
+    session.on(S.UserInputTranscribed, (e) =>
+      console.info(
+        `[SESSION] userTranscript [final=${e.isFinal}, lang=${e.language ?? 'unknown'}]: "${e.transcript}"`,
+      ),
     );
-    session.on(
-      'speech_created',
-      (e: { userInitiated: boolean; source: string }) =>
-        console.info(`[SESSION] speechCreated: source=${e.source}, userInitiated=${e.userInitiated}`),
+    session.on(S.SpeechCreated, (e) =>
+      console.info(`[SESSION] speechCreated: source=${e.source}, userInitiated=${e.userInitiated}`),
     );
-    session.on(
-      'function_tools_executed',
-      (e: { functionCalls: Array<{ name: string; arguments: string }> }) => {
-        const names = e.functionCalls.map((c) => c.name).join(', ');
-        console.info(`[SESSION] toolsExecuted: [${names}]`);
-      },
-    );
-    session.on('conversation_item_added', (e: { item: { type: string; role?: string } }) =>
+    session.on(S.FunctionToolsExecuted, (e) => {
+      const names = e.functionCalls.map((c) => c.name).join(', ');
+      console.info(`[SESSION] toolsExecuted: [${names}]`);
+    });
+    session.on(S.ConversationItemAdded, (e) =>
       console.info(`[SESSION] conversationItemAdded: type=${e.item.type}, role=${e.item.role ?? '-'}`),
     );
-    session.on('error', (e: { error: unknown; source: string }) =>
+    session.on(S.Error, (e) =>
       console.error(`[SESSION] error from ${e.source}:`, e.error),
     );
-    session.on('close', (e: { reason: string; error: unknown }) =>
+    session.on(S.Close, (e) =>
       console.info(`[SESSION] closed: reason=${e.reason}`, e.error ?? ''),
     );
 
@@ -178,7 +172,7 @@ export default defineAgent({
     try {
       await session.say(
         `Hello ${userName}! I'm Pattreeya's assistant, here to help you learn about her career, education, skills, and achievements. Und bei weiteren Fragen zu ihrem Profil stehe ich Ihnen gern zur Verfügung.`,
-        { allowInterruptions: true, addToChatCtx: true }
+        { allowInterruptions: false, addToChatCtx: true }
       );
       console.info('[AGENT] >>> [11] Greeting delivered');
     } catch (e) {
