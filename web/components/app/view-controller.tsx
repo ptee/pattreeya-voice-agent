@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { AnimatePresence, type AnimationDefinition, motion } from 'motion/react';
 import type { AppConfig } from '@/app-config';
+import { GateDialog } from '@/components/app/gate-dialog';
 import { SessionView } from '@/components/app/session-view';
 import { WelcomeView } from '@/components/app/welcome-view';
 import { useConnection } from '@/hooks/useConnection';
@@ -33,6 +34,8 @@ interface ViewControllerProps {
 
 export function ViewController({ appConfig }: ViewControllerProps) {
   const { isConnectionActive, connect, onDisconnectTransitionComplete } = useConnection();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [guestName, setGuestName] = useState('');
 
   const handleAnimationComplete = useCallback(
     (definition: AnimationDefinition) => {
@@ -44,6 +47,11 @@ export function ViewController({ appConfig }: ViewControllerProps) {
     [onDisconnectTransitionComplete]
   );
 
+  // Show gate before anything else
+  if (!isAuthenticated) {
+    return <GateDialog onGranted={(name) => { setGuestName(name); setIsAuthenticated(true); connect(name); }} />;
+  }
+
   return (
     <AnimatePresence mode="wait">
       {/* Welcome view */}
@@ -52,7 +60,7 @@ export function ViewController({ appConfig }: ViewControllerProps) {
           key="welcome"
           {...VIEW_MOTION_PROPS}
           startButtonText={appConfig.startButtonText}
-          onStartCall={connect}
+          onStartCall={() => connect(guestName)}
         />
       )}
       {/* Session view */}

@@ -31,6 +31,19 @@ export class ConfigManager {
     this.qdrantCollection = process.env.COLLECTION_NAME ?? 'pt_cv';
     this.avatarProvider = process.env.AVATAR_PROVIDER ?? 'none';
     this._validateConfig();
+    this._warnOptional();
+  }
+
+  private _warnOptional(): void {
+    const warned: Record<string, string> = {
+      DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY ?? '',
+      CARTESIA_API_KEY: process.env.CARTESIA_API_KEY ?? '',
+    };
+    for (const [key, val] of Object.entries(warned)) {
+      if (!val) {
+        console.warn(`[Config] Warning: ${key} is not set — STT/TTS may fail with WSServerHandshakeError (status=400)`);
+      }
+    }
   }
 
   private _validateConfig(): void {

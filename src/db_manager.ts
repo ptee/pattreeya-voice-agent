@@ -17,7 +17,22 @@ export class PostgreSQLManager {
 
   constructor(config?: ConfigManager) {
     const cfg = config ?? getConfig();
-    this.pool = new pg.Pool({ connectionString: cfg.getPostgresqlUrl() });
+    // Strip sslmode from the connection string so that pg-connection-string does
+    // not set verify-full semantics (pg ≥8.11 treats sslmode=require as verify-full).
+    // We control SSL entirely via the ssl option below.
+    const rawUrl = cfg.getPostgresqlUrl();
+    let connectionString = rawUrl;
+    try {
+      const u = new URL(rawUrl);
+      u.searchParams.delete('sslmode');
+      connectionString = u.toString();
+    } catch {
+      // not a parseable URL — leave it as-is
+    }
+    this.pool = new pg.Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false },
+    });
   }
 
   async fetchOne(query: string, params?: unknown[]): Promise<Record<string, unknown> | null> {
@@ -62,11 +77,10 @@ export class QdrantManager {
   constructor(config?: ConfigManager) {
     const cfg = config ?? getConfig();
     try {
-      // Skip SSL cert verification for self-signed certs
-      process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
       this.client = new QdrantClient({
         url: cfg.getQdrantUrl(),
         apiKey: cfg.getQdrantApiKey(),
+        checkCompatibility: false,
       });
     } catch (err) {
       throw new QdrantConnectionError(`Failed to connect to Qdrant: ${err}`);
