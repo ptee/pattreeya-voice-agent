@@ -28,3 +28,11 @@ All notable changes to this project will be documented in this file.
 - Use docker network for communication between backend and frontend
 - ** This version should make the agent run faster and more stable **
 - Problem from previous version: We use Python for backend, it is slow and unstable for room connection, so we switch to JS/TS for backend. (Experimental)
+
+## [v4.0] 
+### Stable version with LiveKit and keep JS/TS for backend
+- Use LiveKit for room connection (.env.local)
+- Add gate dialog for user to select purpose and password
+- The Agent started immediately after user login and the agent
+greets user with the given name (from previous dialog)
+- ** This version should make the agent run faster and more stable **
