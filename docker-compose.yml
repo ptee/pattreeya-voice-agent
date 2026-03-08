@@ -26,7 +26,9 @@ services:
       QDRANT_API_KEY: ${QDRANT_API_KEY}
       QDRANT_VECTOR_COLLECTION: ${QDRANT_VECTOR_COLLECTION:-pt_cv}
       # Speech / avatar APIs
-      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
+      # REQUIRED for STT/TTS — empty values cause WSServerHandshakeError (status=400)
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY}
+      CARTESIA_API_KEY: ${CARTESIA_API_KEY}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
       TAVUS_API_KEY: ${TAVUS_API_KEY:-}
       SIMLI_API_KEY: ${SIMLI_API_KEY:-}
@@ -65,6 +67,8 @@ services:
       LIVEKIT_URL: ${LIVEKIT_URL}
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      # Gate dialog passwords (comma-separated). Never exposed to the client.
+      INTERVIEW_PASSWORDS: ${INTERVIEW_PASSWORDS:-Interview1234,Interviewer007}
       # LiveKit WebSocket URL for the browser (NEXT_PUBLIC_ vars are baked at
       # build time — changing them here only helps if you rebuild the image)
       NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-${LIVEKIT_URL}}

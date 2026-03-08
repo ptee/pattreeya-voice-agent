@@ -389,7 +389,7 @@ def configure_stt_logging():
 
 
 from livekit.agents import AgentServer
-server = AgentServer(job_memory_warn_mb=1024)
+server = AgentServer(job_memory_warn_mb=1024, initialize_process_timeout=120.0)
 
 
 def prewarm(proc: JobProcess):
@@ -477,6 +477,31 @@ async def my_agent(ctx: JobContext):
     def on_reconnected():
         logger.debug("[Connection] Reconnected successfully ✓")
 
+    @ctx.room.on("connection_state_changed")
+    def on_connection_state_changed(state):
+        logger.info(f"[ROOM] connectionStateChanged: {state}")
+
+    @ctx.room.on("participant_connected")
+    def on_participant_connected(participant):
+        logger.info(f"[ROOM] participantConnected: identity={participant.identity}, kind={participant.kind}")
+
+    @ctx.room.on("participant_disconnected")
+    def on_participant_disconnected(participant):
+        logger.info(f"[ROOM] participantDisconnected: identity={participant.identity}")
+
+    @ctx.room.on("track_subscribed")
+    def on_track_subscribed(track, publication, participant):
+        logger.info(f"[ROOM] trackSubscribed: kind={track.kind}, sid={track.sid}, from={participant.identity}")
+
+    @ctx.room.on("track_unsubscribed")
+    def on_track_unsubscribed(track, publication, participant):
+        logger.info(f"[ROOM] trackUnsubscribed: kind={track.kind}, from={participant.identity}")
+
+    @ctx.room.on("active_speakers_changed")
+    def on_active_speakers_changed(speakers):
+        identities = [s.identity for s in speakers]
+        logger.info(f"[ROOM] activeSpeakersChanged: [{', '.join(identities) or 'none'}]")
+
     # Initialize MCP client and room manager
     mcp_client = None
     room_manager = None
@@ -532,7 +557,14 @@ async def my_agent(ctx: JobContext):
             ),
         )
     except Exception as e:
-        logger.error(f">>> [ERROR] session.start() failed: {e}")
+        err_name = type(e).__name__
+        err_msg = str(e)
+        if 'handshake' in err_msg.lower() or 'WSServerHandshake' in err_name or '400' in err_msg:
+            logger.error(f"[INIT] WSServerHandshakeError: session.start() failed — check DEEPGRAM_API_KEY/CARTESIA_API_KEY: {e}")
+        elif 'timeout' in err_msg.lower() or 'TimeoutError' in err_name:
+            logger.error(f"[INIT] Running init timeout: session.start() timed out — check network/credentials: {e}")
+        else:
+            logger.error(f">>> [ERROR] session.start() failed: {e}")
         raise
     finally:
         logger.debug(">>> [11] Cleanup starting...")
@@ -551,6 +583,32 @@ async def my_agent(ctx: JobContext):
         await cleanup_avatar(avatar)
 
     logger.info(f"✓ Agent connected to room {ctx.room.name} - ready to listen")
+
+    # Greet the user by name — wait briefly for participant if not yet connected
+    participants = list(ctx.room.remote_participants.values())
+    if not participants:
+        participant_event = asyncio.Event()
+        def _on_participant_joined(_participant):
+            participant_event.set()
+        ctx.room.once("participant_connected", _on_participant_joined)
+        try:
+            await asyncio.wait_for(participant_event.wait(), timeout=3.0)
+            participants = list(ctx.room.remote_participants.values())
+        except asyncio.TimeoutError:
+            pass
+
+    user_name = (participants[0].name or '').strip() if participants else ''
+    if not user_name:
+        user_name = 'there'
+    logger.info(f"[AGENT] Greeting user: '{user_name}' (identity={participants[0].identity if participants else 'none'})")
+    try:
+        await session.say(
+            f"Hello {user_name}! I'm Pattreeya's assistant, here to help you learn about her career, education, skills, and achievements. Und bei weiteren Fragen zu ihrem Profil stehe ich Ihnen gern zur Verfügung.",
+            allow_interruptions=True,
+        )
+        logger.info("[AGENT] Greeting delivered")
+    except Exception as e:
+        logger.warning(f"[AGENT] Greeting failed (non-fatal): {e}")
 
 
 if __name__ == "__main__":

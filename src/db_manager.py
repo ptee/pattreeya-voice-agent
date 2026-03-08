@@ -59,10 +59,23 @@ class PostgreSQLManager:
         self.conn = None
         self._verify_connection()
 
+    def _get_connection_string(self) -> str:
+        """Get PostgreSQL connection string with sslmode stripped (handled via connect args)"""
+        raw_url = self.config.get_postgresql_url()
+        try:
+            from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
+            parsed = urlparse(raw_url)
+            params = parse_qs(parsed.query)
+            params.pop('sslmode', None)
+            new_query = urlencode({k: v[0] for k, v in params.items()})
+            return urlunparse(parsed._replace(query=new_query))
+        except Exception:
+            return raw_url
+
     def _verify_connection(self) -> None:
         """Verify database connection is available"""
         try:
-            conn = psycopg2.connect(self.config.get_postgresql_url())
+            conn = psycopg2.connect(self._get_connection_string(), sslmode='require')
             conn.close()
             logger.info("✓ PostgreSQL connection verified")
         except psycopg2.Error as e:
@@ -84,7 +97,7 @@ class PostgreSQLManager:
         """
         conn = None
         try:
-            conn = psycopg2.connect(self.config.get_postgresql_url())
+            conn = psycopg2.connect(self._get_connection_string(), sslmode='require')
             yield conn
         except psycopg2.Error as e:
             if conn:

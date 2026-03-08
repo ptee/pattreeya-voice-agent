@@ -50,8 +50,8 @@ def create_app(
             # Note: agent_name could be used for agent selection if needed
             # agent_name = data.get("room_config", {}).get("agents", [{}])[0].get("agent_name")
 
-            # Generate participant token
-            participant_name = "user"
+            # Generate participant token — use name from gate dialog if provided
+            participant_name = (data.get("participant_name") or "").strip() or "guest"
             participant_identity = f"voice_assistant_user_{os.urandom(2).hex()}"
             room_name = f"voice_assistant_room_{os.urandom(2).hex()}"
 

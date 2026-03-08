@@ -7,7 +7,9 @@
     "start": "node --import tsx/esm src/index.ts start",
     "build": "tsc",
     "start:prod": "node dist/index.js start",
-    "download-files": "node --import tsx/esm src/index.ts download-files"
+    "download-files": "node --import tsx/esm src/index.ts download-files",
+    "test:mcp": "node --import tsx/esm scripts/test-mcp.ts",
+    "test:llm": "node --import tsx/esm scripts/test-llm.ts"
   },
   "dependencies": {
     "@livekit/agents": "^1.0.0",

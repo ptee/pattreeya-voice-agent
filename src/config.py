@@ -7,8 +7,9 @@ import os
 from typing import Optional
 from dotenv import load_dotenv
 
-# Load environment variables from .env files
+# Load environment variables from .env files (.env.local takes precedence)
 load_dotenv()
+load_dotenv('.env.local', override=True)
 
 from exceptions import (
     ConfigurationError,
@@ -66,6 +67,18 @@ class ConfigManager:
         self.avatar_provider = os.getenv("AVATAR_PROVIDER", "none")
         # Validate required configuration
         self._validate_config()
+        self._warn_optional()
+
+    def _warn_optional(self) -> None:
+        """Warn about missing optional configuration"""
+        import warnings
+        optional_vars = {
+            "DEEPGRAM_API_KEY": os.getenv("DEEPGRAM_API_KEY", ""),
+            "CARTESIA_API_KEY": os.getenv("CARTESIA_API_KEY", ""),
+        }
+        for key, val in optional_vars.items():
+            if not val:
+                print(f"[Config] Warning: {key} is not set — STT/TTS may fail with WSServerHandshakeError (status=400)")
 
     def _validate_config(self) -> None:
         """Validate that all required configuration is present"""
@@ -81,7 +94,7 @@ class ConfigManager:
 
         missing = [key for key, value in required_vars.items() if not value]
         if missing:
-            raise ValueError(
+            raise ConfigurationError(
                 f"Missing required environment variables: {', '.join(missing)}. "
                 f"Please set them in .env.local"
             )
