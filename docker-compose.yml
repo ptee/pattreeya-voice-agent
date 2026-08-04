@@ -68,7 +68,7 @@ services:
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
       # Gate dialog passwords (comma-separated). Never exposed to the client.
-      INTERVIEW_PASSWORDS: ${INTERVIEW_PASSWORDS:-Interview1234,Interviewer007}
+      INTERVIEW_PASSWORDS: ${INTERVIEW_PASSWORDS:}
       # LiveKit WebSocket URL for the browser (NEXT_PUBLIC_ vars are baked at
       # build time — changing them here only helps if you rebuild the image)
       NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-${LIVEKIT_URL}}
