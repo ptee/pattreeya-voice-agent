@@ -24,7 +24,7 @@ services:
       POSTGRESQL_URL: ${POSTGRESQL_URL}
       QDRANT_URL: ${QDRANT_URL}
       QDRANT_API_KEY: ${QDRANT_API_KEY}
-      QDRANT_VECTOR_COLLECTION: ${QDRANT_VECTOR_COLLECTION:-pt_cv}
+      QDRANT_VECTOR_COLLECTION: ${QDRANT_VECTOR_COLLECTION:-}
       # Speech / avatar APIs
       # REQUIRED for STT/TTS — empty values cause WSServerHandshakeError (status=400)
       DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY}
